@@ -9,7 +9,10 @@
     "start": "node --env-file=.env server.js",
     "server": "node --env-file=.env server.js",
     "server:dev": "node --env-file=.env --watch server.js",
-    "client": "npm --prefix frontend run dev"
+    "client": "npm --prefix frontend run dev",
+    "test:db": "node --env-file=.env server/models.integration.js",
+    "seed:users": "node --env-file=.env scripts/seed-users.js",
+    "test:seed": "node --test scripts/seed-users.test.js"
   },
   "author": "",
   "license": "ISC",
