@@ -57,3 +57,56 @@ and API, then run the example requests above.
 
 References: [MongoDB driver](https://www.mongodb.com/docs/drivers/node/current/connect/)
 and [Express error handling](https://expressjs.com/en/guide/error-handling/).
+
+## Blackjack data models and deployment
+
+Production runs from `/opt/blackjack` on the host configured by `SERVER_IP`, served by nginx at
+https://cruddylit.com. The `blackjack` systemd service runs the API as an
+unprivileged user. MongoDB listens on localhost with authentication enabled;
+its application credentials are in `/opt/blackjack/.env` (mode 600).
+
+`server/models/User.js` provides `create`, `authenticate`, and `recordGame`.
+Users have a case-insensitive unique username and email, a salted scrypt password
+hash, timestamps, net `earningsCents`, `gamesPlayed`, `wins`, `losses`, and `pushes`.
+Passwords must be 12–128 characters. Monetary values are integer cents; losses
+subtract from earnings. Call `recordGame(userId, netEarningsCents)` once per
+settled game from trusted server code. No public earnings-write endpoint exists.
+The existing frontend login remains a placeholder; these model methods do not
+create HTTP sessions or connect the login form.
+
+`server/models/Leaderboard.js` reads a MongoDB `leaderboard` view containing the
+top ten users by net earnings, breaking ties by user ID. It exposes only public
+player statistics and always reflects current User totals. Read it via
+`GET /api/leaderboard`, which returns `{ players: [...] }` with ranks 1–10.
+Models, schema validation, and indexes initialize before the API starts.
+
+`deploy/bootstrap.sh` provisions a fresh Ubuntu 24.04 server with Node.js 24
+already installed. It installs MongoDB 8, builds the frontend, configures systemd
+and nginx, and initially creates a self-signed IP certificate. It replaces the
+nginx default site, saving the previous configuration. Export `SERVER_IP` in the
+shell running either deployment script (the server IPv4 address; no default is
+embedded in the codebase). For example:
+
+```sh
+export SERVER_IP="<server-ipv4-address>"
+bash deploy/bootstrap.sh
+bash deploy/domain.sh cruddylit.com
+```
+
+The domain script runs afterward to install a trusted Let's Encrypt certificate and
+activate automatic renewal. The domain must resolve to this server. Production
+has been configured with this domain step.
+
+Verification on the server:
+
+```sh
+cd /opt/blackjack
+npm test
+npm --prefix frontend run lint
+node --env-file=.env server/models.integration.js
+systemctl status blackjack mongod nginx
+certbot certificates
+```
+
+The integration check temporarily creates test players, verifies password checks,
+uniqueness, game totals, and live rankings, then removes the test players.
