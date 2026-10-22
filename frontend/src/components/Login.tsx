@@ -1,5 +1,5 @@
 function Login() {
-    function doLogin(event: any): void {
+    function doLogin(event: React.MouseEvent<HTMLInputElement>): void {
         event.preventDefault();
         alert('doIt()');
     }
