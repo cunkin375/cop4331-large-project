@@ -1,4 +1,5 @@
 import express from 'express';
+import { Leaderboard } from './models/Leaderboard.js';
 
 export function createApp(db) {
   const app = express();
@@ -12,6 +13,11 @@ export function createApp(db) {
     } catch {
       res.status(503).json({ error: 'Database unavailable' });
     }
+  });
+
+  app.get('/api/leaderboard', async (_req, res, next) => {
+    try { res.json({ players: await new Leaderboard(db).top10() }); }
+    catch (error) { next(error); }
   });
 
   app.get('/api/items', async (_req, res, next) => {
