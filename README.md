@@ -110,3 +110,24 @@ certbot certificates
 
 The integration check temporarily creates test players, verifies password checks,
 uniqueness, game totals, and live rankings, then removes the test players.
+
+## Seed example users
+
+With Node.js 22.12+ and the database configured in `.env`, run:
+
+```sh
+read -r -s -p 'Example user password (12–128 characters): ' SEED_PASSWORD
+printf '\n'
+export SEED_PASSWORD
+npm run seed:users
+unset SEED_PASSWORD
+```
+
+This inserts 12 example accounts (`demo_ace` through `demo_lane`) with emails
+such as `demo_ace@example.com`, individually salted scrypt password hashes, and
+consistent blackjack win/loss/push counts and net earnings in integer cents.
+All new accounts use the supplied password. The leaderboard view immediately
+reflects their earnings. Existing matching accounts are skipped without changing
+their passwords or game totals; conflicting usernames/emails stop the script.
+The script uses `MONGODB_URI` and `MONGODB_DB` (default `blackjack`) and never
+clears the database. Run it against the database you intend to populate.

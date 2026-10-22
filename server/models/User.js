@@ -2,6 +2,15 @@ import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:cry
 import { promisify } from 'node:util';
 const scrypt = promisify(scryptCallback);
 
+export async function hashPassword(password) {
+  if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
+    throw new TypeError('Password must contain 12–128 characters');
+  }
+  const salt = randomBytes(16).toString('hex');
+  const hash = (await scrypt(password, salt, 64)).toString('hex');
+  return `scrypt:${salt}:${hash}`;
+}
+
 // All monetary amounts use integer cents. Earnings are net winnings minus losses.
 export class User {
   constructor(db) { this.collection = db.collection('users'); }
@@ -13,15 +22,11 @@ export class User {
     if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new TypeError('A valid email is required');
     }
-    if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
-      throw new TypeError('Password must contain 12–128 characters');
-    }
-    const salt = randomBytes(16).toString('hex');
-    const hash = (await scrypt(password, salt, 64)).toString('hex');
+    const passwordHash = await hashPassword(password);
     const now = new Date();
     const user = {
       username, usernameKey: username.toLowerCase(), email: email.trim().toLowerCase(),
-      passwordHash: `scrypt:${salt}:${hash}`, earningsCents: 0,
+      passwordHash, earningsCents: 0,
       gamesPlayed: 0, wins: 0, losses: 0, pushes: 0, createdAt: now, updatedAt: now,
     };
     const { insertedId } = await this.collection.insertOne(user);
