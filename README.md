@@ -1,4 +1,4 @@
-# MERN lab
+# Large Project
 
 React + TypeScript + Vite frontend with an Express API and MongoDB driver.
 
