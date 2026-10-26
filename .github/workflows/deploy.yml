@@ -1,0 +1,66 @@
+name: Deploy droplet
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-droplet
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEPLOY_HOST: 157.245.250.247
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install and validate
+        run: |
+          npm ci --omit=dev
+          npm --prefix frontend ci
+          npm test
+          npm --prefix frontend run lint
+          npm --prefix frontend run build
+      - name: Package source
+        run: |
+          tar --exclude=.git --exclude=node_modules --exclude=frontend/node_modules \
+            --exclude=frontend/dist --exclude='.env' --exclude='.env.*' \
+            -czf "$RUNNER_TEMP/blackjack.tar.gz" .
+      - name: Configure deployment SSH
+        if: ${{ !env.ACT }}
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY" || { echo 'Missing DROPLET_SSH_KEY secret' >&2; exit 1; }
+          test -n "$SSH_KNOWN_HOSTS" || { echo 'Missing DROPLET_KNOWN_HOSTS secret' >&2; exit 1; }
+          install -d -m 700 "$RUNNER_TEMP/deploy-ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/deploy-ssh/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/deploy-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/deploy-ssh/"*
+      - name: Upload and deploy
+        if: ${{ !env.ACT }}
+        run: |
+          ssh_options=(-F /dev/null -i "$RUNNER_TEMP/deploy-ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/deploy-ssh/known_hosts")
+          remote_dir=$(ssh "${ssh_options[@]}" "root@$DEPLOY_HOST" 'mktemp -d /tmp/blackjack-deploy.XXXXXXXX')
+          trap 'ssh "${ssh_options[@]}" "root@$DEPLOY_HOST" "rm -rf -- $remote_dir"; rm -rf -- "$RUNNER_TEMP/deploy-ssh"' EXIT
+          scp "${ssh_options[@]}" "$RUNNER_TEMP/blackjack.tar.gz" deploy/update.sh "root@$DEPLOY_HOST:$remote_dir/"
+          ssh "${ssh_options[@]}" "root@$DEPLOY_HOST" "bash $remote_dir/update.sh $remote_dir/blackjack.tar.gz"
+      - name: Local deployment notice
+        if: ${{ env.ACT }}
+        run: echo 'act validated tests, lint, build and packaging; production SSH is skipped locally.'
+      - name: Remove SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/deploy-ssh"
