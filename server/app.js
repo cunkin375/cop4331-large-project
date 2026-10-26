@@ -1,10 +1,12 @@
 import express from 'express';
 import { Leaderboard } from './models/Leaderboard.js';
+import { registerGameRoutes } from './game.js';
 
-export function createApp(db) {
+export function createApp(db, gameOptions) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '16kb' }));
+  registerGameRoutes(app, db, gameOptions);
 
   app.get('/api/health', async (_req, res) => {
     try {
@@ -15,8 +17,14 @@ export function createApp(db) {
     }
   });
 
-  app.get('/api/leaderboard', async (_req, res, next) => {
-    try { res.json({ players: await new Leaderboard(db).top10() }); }
+  app.get('/api/leaderboard', async (req, res, next) => {
+    try {
+      const limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return res.status(400).json({ error: 'limit must be an integer from 1 to 100' });
+      }
+      res.json({ players: await new Leaderboard(db).bestAttempts(limit) });
+    }
     catch (error) { next(error); }
   });
 
