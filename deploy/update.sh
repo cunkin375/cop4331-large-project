@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Routine deployment; never provisions nginx/MongoDB or reads database secrets.
 set -euo pipefail
+if (( EUID != 0 )); then
+  exec sudo -n bash "$0" "$@"
+fi
 archive=${1:?Usage: bash deploy/update.sh /path/to/blackjack.tar.gz}
 app=/opt/blackjack
 exec 9>/var/lock/blackjack-deploy.lock
