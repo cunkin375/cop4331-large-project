@@ -6,13 +6,13 @@
   "scripts": {
     "test": "node --test server/app.test.js",
     "test:server": "node --test server/app.test.js",
+    "test:db": "node --env-file=.env server/models.integration.js",
+    "test:seed": "node --test scripts/seed-users.test.js",
+    "seed:users": "node --env-file=.env scripts/seed-users.js",
     "start": "node --env-file=.env server.js",
     "server": "node --env-file=.env server.js",
     "server:dev": "node --env-file=.env --watch server.js",
-    "client": "npm --prefix frontend run dev",
-    "test:db": "node --env-file=.env server/models.integration.js",
-    "seed:users": "node --env-file=.env scripts/seed-users.js",
-    "test:seed": "node --test scripts/seed-users.test.js"
+    "client": "npm --prefix frontend run dev"
   },
   "author": "",
   "license": "ISC",
