@@ -4,8 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "node --test server/app.test.js",
-    "test:server": "node --test server/app.test.js",
+    "test": "node --test server/app.test.js server/game.test.js",
+    "test:server": "node --test server/app.test.js server/game.test.js",
     "test:db": "node --env-file=.env server/models.integration.js",
     "test:seed": "node --test scripts/seed-users.test.js",
     "seed:users": "node --env-file=.env scripts/seed-users.js",

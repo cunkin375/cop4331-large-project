@@ -131,3 +131,41 @@ reflects their earnings. Existing matching accounts are skipped without changing
 their passwords or game totals; conflicting usernames/emails stop the script.
 The script uses `MONGODB_URI` and `MONGODB_DB` (default `blackjack`) and never
 clears the database. Run it against the database you intend to populate.
+
+## Game logic (Person 2)
+
+The game engine uses the existing MongoDB driver and the application's
+authentication middleware. Authenticated requests derive the user from
+`req.user`; clients never submit a score or user ID. The opaque game ID acts as
+a capability for subsequent requests and must be kept private.
+
+- `POST /api/game/start` creates an active session and deals round 1 from a
+  newly shuffled 52-card deck.
+- `POST /api/game/hit` with `{ "gameId": "<returned gameId>" }` deals one card.
+- `POST /api/game/stand` with the same body draws dealer cards until at least 17,
+  including standing on soft 17, and resolves the round.
+- `GET /api/game/state?gameId=<returned-game-id>` returns the current state with
+  the dealer hole card hidden while the round is in progress.
+- `GET /api/attempts/me` returns the authenticated user's attempts and best score.
+- `GET /api/leaderboard?limit=10` ranks users by their best completed attempt;
+  equal scores share a rank.
+- `POST /api/game/start` with `{ "gameId": "<returned gameId>" }` starts the next
+  round only after the current round ends. Reuse this ID for all ten rounds.
+
+Responses include player cards/value, visible dealer cards, round number,
+rounds completed, roundOver, outcome, points, totalPoints, and attemptComplete.
+The dealer's hidden card and total are revealed only when the round ends.
+Aces count as 1 or 11; two-card naturals settle immediately and beat other 21s.
+Wins award 3 points, ties 1, and losses 0. Busting ends a round immediately.
+After exactly ten completed rounds, the server upserts one document in `attempts`
+with the game ID as `_id`, a User ObjectId reference, all ten round results,
+integer `score` (0�30), createdAt, and completedAt. A new attempt requires a new
+start request with userId and no gameId. Existing earnings rankings are unchanged.
+
+Game state persists in `games`, including the private deck; conditional version
+updates reject concurrent conflicting moves with 409. Invalid input returns 400,
+unknown users/games 404, and invalid state transitions 409. If final score saving
+fails, retrying an action on that completed game retries the idempotent attempt
+write before returning 409. Incomplete attempts remain stored and are not scored.
+`npm test` includes deterministic scoring, dealing, dealer, and ten-round API tests
+using a database double; these do not require a running MongoDB instance.
