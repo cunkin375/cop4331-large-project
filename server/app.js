@@ -1,8 +1,12 @@
 import express from 'express';
 import { Leaderboard } from './models/Leaderboard.js';
 import { registerGameRoutes } from './game.js';
+import { createAuthRouter } from './routes/auth.js';
+import * as defaultMailer from './utils/mailer.js';
+import { errorHandler, notFound } from './middleware/errors.js';
 
-export function createApp(db, gameOptions) {
+// Pass { mailer } to replace email delivery (tests use a mock); other options go to the game routes.
+export function createApp(db, { mailer = defaultMailer, ...gameOptions } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '16kb' }));
@@ -52,16 +56,9 @@ export function createApp(db, gameOptions) {
     }
   });
 
-  app.use((_req, res) => res.status(404).json({ error: 'Endpoint not found' }));
-  app.use((error, _req, res, _next) => {
-    if (error.type === 'entity.parse.failed') {
-      return res.status(400).json({ error: 'Invalid JSON body' });
-    }
-    if (error.type === 'entity.too.large') {
-      return res.status(413).json({ error: 'Request body too large' });
-    }
-    console.error('API request failed:', error.name);
-    res.status(500).json({ error: 'Unable to complete request' });
-  });
+  app.use('/api', createAuthRouter(db, mailer));
+
+  app.use(notFound);
+  app.use(errorHandler);
   return app;
 }
