@@ -20,5 +20,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/blackjack/
+            git config --global --add safe.directory /opt/blackjack
             git pull origin main
             npm install
