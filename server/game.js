@@ -47,16 +47,15 @@ export function registerGameRoutes(app, db, { deckFactory = createDeck, requireA
   for (const action of ['start', 'hit', 'stand']) {
     const handler = async (req, res, next) => {
       try {
-        const { gameId, userId } = req.body || {};
+        const { gameId } = req.body || {};
         const authenticatedUserId = req.user?.id;
-        const effectiveUserId = authenticatedUserId || userId;
         let game;
         let version;
         if (action === 'start' && gameId === undefined) {
-          if (typeof effectiveUserId !== 'string' || !/^[a-f\d]{24}$/i.test(effectiveUserId)) {
-            return fail(res, 400, 'A valid userId is required');
+          if (typeof authenticatedUserId !== 'string' || !/^[a-f\d]{24}$/i.test(authenticatedUserId)) {
+            return fail(res, 401, 'Authentication required');
           }
-          const owner = new ObjectId(effectiveUserId);
+          const owner = new ObjectId(authenticatedUserId);
           if (!await db.collection('users').findOne({ _id: owner })) return fail(res, 404, 'User not found');
           game = {
             _id: randomUUID(), userId: owner, user: owner, version: 0, round: 1,

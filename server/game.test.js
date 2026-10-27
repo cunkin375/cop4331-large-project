@@ -18,6 +18,8 @@ test('deck has 52 distinct cards and aces adjust without busting unnecessarily',
 async function fixture(deckFactory, run) {
   const games = new Map();
   const attempts = new Map();
+  // structuredClone drops the ObjectId class; keep the real one so ownership checks work.
+  const copy = game => game && { ...structuredClone(game), userId: game.userId };
   const db = { collection(name) {
     if (name === 'users') return { findOne: async () => ({}) };
     if (name === 'attempts') return { updateOne: async (query, update) => {
@@ -25,16 +27,16 @@ async function fixture(deckFactory, run) {
     } };
     assert.equal(name, 'games');
     return {
-      insertOne: async game => games.set(game._id, structuredClone(game)),
-      findOne: async query => structuredClone(games.get(query._id) || null),
+      insertOne: async game => games.set(game._id, copy(game)),
+      findOne: async query => copy(games.get(query._id) || null),
       replaceOne: async (query, game) => {
         if (games.get(query._id)?.version !== query.version) return { matchedCount: 0 };
-        games.set(query._id, structuredClone(game));
+        games.set(query._id, copy(game));
         return { matchedCount: 1 };
       },
     };
   } };
-  const server = createApp(db, { deckFactory }).listen(0, '127.0.0.1');
+  const server = createApp(db, { deckFactory, requireAuth: fakeAuth }).listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   const post = async (action, body = {}) => {
     const response = await fetch(`http://127.0.0.1:${server.address().port}/api/game/${action}`, {
@@ -46,10 +48,15 @@ async function fixture(deckFactory, run) {
   finally { await new Promise(resolve => server.close(resolve)); }
 }
 const userId = '0123456789abcdef01234567';
+// Stands in for JWT auth: every request is made as this user.
+function fakeAuth(req, _res, next) {
+  req.user = { id: userId, username: 'player' };
+  next();
+}
 
 test('dealer stands on soft 17, hole card stays hidden, and exactly ten rounds save once', async () => {
   await fixture(() => deck('10', 'A', '8', '6'), async (post, attempts) => {
-    let game = await post('start', { userId });
+    let game = await post('start');
     const { gameId } = game;
     assert.equal(game.dealerCards.length, 1);
     assert.equal(game.dealerValue, undefined);
@@ -84,7 +91,7 @@ test('hit bust ends the round, dealer draws below 17, ties and naturals score co
     [['A', 'A', 'K', 'Q'], null, 'tie', 1],
   ]) {
     await fixture(() => deck(...ranks), async post => {
-      let game = await post('start', { userId });
+      let game = await post('start');
       if (action) game = await post(action, { gameId: game.gameId });
       assert.equal(game.outcome, outcome);
       assert.equal(game.points, points);
@@ -96,7 +103,6 @@ test('hit bust ends the round, dealer draws below 17, ties and naturals score co
 
 test('rejects invalid IDs and missing games', async () => {
   await fixture(() => deck('10', '9', '8', '7'), async post => {
-    assert.equal((await post('start')).status, 400);
     assert.equal((await post('hit', { gameId: { $ne: null } })).status, 400);
     assert.equal((await post('stand', { gameId: '00000000-0000-0000-0000-000000000000' })).status, 404);
   });
@@ -104,7 +110,7 @@ test('rejects invalid IDs and missing games', async () => {
 
 test('concurrent moves cannot settle or score a round twice', async () => {
   await fixture(() => deck('10', '9', '8', '7', '2'), async post => {
-    const { gameId } = await post('start', { userId });
+    const { gameId } = await post('start');
     const results = await Promise.all([post('stand', { gameId }), post('stand', { gameId })]);
     assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
     const next = await post('start', { gameId });
