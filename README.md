@@ -48,6 +48,35 @@ Invoke-RestMethod http://127.0.0.1:5000/api/items
 
 React can call `fetch('/api/items')` through the Vite proxy.
 
+### Auth
+
+Routes live in `server/routes/auth.js` and are documented in
+[`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.0, importable into SwaggerHub).
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| POST | `/api/register` | Creates an unverified account and emails a 24-hour verification link |
+| GET | `/api/verify-email?token=` | Marks the email verified |
+| POST | `/api/resend-verification` | Emails a new link; always returns the same message |
+| POST | `/api/login` | `username` or `email` plus `password`; returns a 2-hour JWT. 401 bad credentials, 403 unverified |
+| POST | `/api/forgot-password` | Emails a 1-hour reset link; always returns the same message |
+| POST | `/api/reset-password` | `token` plus new `password` |
+| GET | `/api/me` | Requires `Authorization: Bearer <jwt>`; returns id, username, email |
+
+Auth uses the existing User model and its scrypt password hashing (12–128 character
+passwords). Only SHA-256 hashes of email tokens are stored. Accounts created before
+email verification existed (no `emailVerified` field, such as seeded users) can still log in.
+Set `JWT_SECRET`, `CLIENT_URL`, and the `SMTP_*` variables from `.env.example`.
+Email links open `CLIENT_URL/verify-email` and `CLIENT_URL/reset-password`, which the
+frontend must handle.
+
+`npm test` includes the auth tests in `server/auth.test.js`, which use an in-memory
+users collection and a fake mailer, so no database or SMTP server is needed.
+
+Game and attempt endpoints require `Authorization: Bearer <jwt>`. For local testing,
+`node --env-file=.env server/dev/devToken.js <userId> [username]` prints a token for an
+existing user ID; it refuses to run when `NODE_ENV=production`.
+
 ## Verification
 
 From the repository root, run `npm test`, `npm --prefix frontend run build`,
@@ -160,7 +189,7 @@ Wins award 3 points, ties 1, and losses 0. Busting ends a round immediately.
 After exactly ten completed rounds, the server upserts one document in `attempts`
 with the game ID as `_id`, a User ObjectId reference, all ten round results,
 integer `score` (0�30), createdAt, and completedAt. A new attempt requires a new
-start request with userId and no gameId. Existing earnings rankings are unchanged.
+start request with no gameId; the user comes from the bearer token. Existing earnings rankings are unchanged.
 
 Game state persists in `games`, including the private deck; conditional version
 updates reject concurrent conflicting moves with 409. Invalid input returns 400,
