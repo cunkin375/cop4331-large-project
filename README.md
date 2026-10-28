@@ -48,6 +48,35 @@ Invoke-RestMethod http://127.0.0.1:5000/api/items
 
 React can call `fetch('/api/items')` through the Vite proxy.
 
+### Auth
+
+Routes live in `server/routes/auth.js` and are documented in
+[`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.0, importable into SwaggerHub).
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| POST | `/api/register` | Creates an unverified account and emails a 24-hour verification link |
+| GET | `/api/verify-email?token=` | Marks the email verified |
+| POST | `/api/resend-verification` | Emails a new link; always returns the same message |
+| POST | `/api/login` | `username` or `email` plus `password`; returns a 2-hour JWT. 401 bad credentials, 403 unverified |
+| POST | `/api/forgot-password` | Emails a 1-hour reset link; always returns the same message |
+| POST | `/api/reset-password` | `token` plus new `password` |
+| GET | `/api/me` | Requires `Authorization: Bearer <jwt>`; returns id, username, email |
+
+Auth uses the existing User model and its scrypt password hashing (12–128 character
+passwords). Only SHA-256 hashes of email tokens are stored. Accounts created before
+email verification existed (no `emailVerified` field, such as seeded users) can still log in.
+Set `JWT_SECRET`, `CLIENT_URL`, and the `SMTP_*` variables from `.env.example`.
+Email links open `CLIENT_URL/verify-email` and `CLIENT_URL/reset-password`, which the
+frontend must handle.
+
+`npm test` includes the auth tests in `server/auth.test.js`, which use an in-memory
+users collection and a fake mailer, so no database or SMTP server is needed.
+
+Game and attempt endpoints require `Authorization: Bearer <jwt>`. For local testing,
+`node --env-file=.env server/dev/devToken.js <userId> [username]` prints a token for an
+existing user ID; it refuses to run when `NODE_ENV=production`.
+
 ## Verification
 
 From the repository root, run `npm test`, `npm --prefix frontend run build`,
@@ -131,3 +160,24 @@ reflects their earnings. Existing matching accounts are skipped without changing
 their passwords or game totals; conflicting usernames/emails stop the script.
 The script uses `MONGODB_URI` and `MONGODB_DB` (default `blackjack`) and never
 clears the database. Run it against the database you intend to populate.
+
+## Blackjack game
+
+The Blackjack API uses the existing authentication middleware and MongoDB
+driver. The logged-in user's ID comes from `req.user`; clients do not send
+scores or user IDs.
+
+- `POST /api/game/start` starts a session or begins the next round.
+- `POST /api/game/hit` deals one card.
+- `POST /api/game/stand` finishes the round using standard dealer rules.
+- `GET /api/game/state?gameId=<game-id>` returns the current game state.
+- `GET /api/attempts/me` returns the user's completed attempts and best score.
+- `GET /api/leaderboard?limit=10` lists users by their best score.
+
+Each session has up to ten rounds. Aces count as 1 or 11, dealer play stops
+at 17, Blackjack is settled immediately, and wins, ties, and losses score
+3, 1, and 0 points. The dealer's hole card stays hidden until the round ends.
+Completed ten-round sessions are saved as attempts, and duplicate saves are
+prevented by the session ID. Invalid moves return a JSON error with status 400;
+missing sessions return 404, and moves that are not allowed in the current state
+return 409. Run `npm test` to execute the API and game tests.

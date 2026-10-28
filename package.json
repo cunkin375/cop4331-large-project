@@ -4,8 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "node --test server/app.test.js",
-    "test:server": "node --test server/app.test.js",
+    "test": "node --test server/app.test.js server/game.test.js server/auth.test.js",
+    "test:server": "node --test server/app.test.js server/game.test.js server/auth.test.js",
     "test:db": "node --env-file=.env server/models.integration.js",
     "test:seed": "node --test scripts/seed-users.test.js",
     "seed:users": "node --env-file=.env scripts/seed-users.js",
@@ -18,7 +18,9 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.22.3",
-    "mongodb": "^7.7.0"
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.7.0",
+    "nodemailer": "^10.2.1"
   },
   "type": "module"
 }

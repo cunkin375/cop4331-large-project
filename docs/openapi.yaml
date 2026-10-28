@@ -1,0 +1,486 @@
+openapi: 3.0.3
+info:
+  title: Blackjack API
+  version: 1.0.0
+  description: |
+    Accounts, blackjack games, attempts, and the leaderboard.
+    Passwords must contain 12–128 characters. Usernames contain 3–20 letters,
+    digits, or underscores and are unique ignoring case. Emails are stored lowercase.
+    Game and attempt endpoints require the JWT from `/login` as a bearer token.
+    Errors always return `{ "error": "<message>" }`.
+servers:
+  - url: https://cruddylit.com/api
+    description: Production
+  - url: http://localhost:5000/api
+    description: Local development
+tags:
+  - name: System
+  - name: Auth
+  - name: Game
+    description: An attempt is one game of exactly ten rounds. Wins score 3, ties 1, losses 0.
+  - name: Leaderboard
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Check API and database availability
+      responses:
+        '200':
+          description: The database is connected
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, database]
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: connected }
+        '503':
+          description: The database is unavailable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /items:
+    get:
+      tags: [System]
+      summary: List the latest items
+      responses:
+        '200':
+          description: Up to 100 items, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Item' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [System]
+      summary: Create an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100, example: Example }
+      responses:
+        '201':
+          description: The created item
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Item' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /register:
+    post:
+      tags: [Auth]
+      summary: Create an account and send a verification email
+      description: Does not log the user in. The verification link expires after 24 hours.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string, minLength: 3, maxLength: 20, pattern: '^[a-zA-Z0-9_]+$', example: alice_1 }
+                email: { type: string, format: email, example: alice@example.com }
+                password: { type: string, format: password, minLength: 12, maxLength: 128 }
+      responses:
+        '201':
+          description: Account created; verification email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Username or email already taken
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: That username is already taken }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /verify-email:
+    get:
+      tags: [Auth]
+      summary: Verify an email address using the emailed token
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '400':
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /resend-verification:
+    post:
+      tags: [Auth]
+      summary: Send a new verification email
+      description: Always returns the same message whether or not the account exists or is already verified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /login:
+    post:
+      tags: [Auth]
+      summary: Log in with username or email
+      description: Send either `username` or `email`; either field may hold a username or an email address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                username: { type: string, example: alice_1 }
+                email: { type: string, example: alice@example.com }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Logged in. The JWT expires after 2 hours.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: 'HS256 JWT with payload { id, username }' }
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Wrong username/email or password
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Email address not yet verified
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /forgot-password:
+    post:
+      tags: [Auth]
+      summary: Email a password reset link
+      description: Always returns the same message so emails cannot be enumerated. The link expires after 1 hour.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /reset-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password using the emailed reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, format: password, minLength: 12, maxLength: 128 }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '400':
+          description: Missing fields, invalid password, or invalid/expired token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /me:
+    get:
+      tags: [Auth]
+      summary: Get the logged-in user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401':
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: The user no longer exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /game/start:
+    post:
+      tags: [Game]
+      summary: Start a new attempt, or the next round of an existing one
+      description: |
+        Without `gameId`, creates a new attempt for the logged-in user and deals round 1.
+        With `gameId`, deals the next round once the current round is over.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                gameId: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/GameState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /game/hit:
+    post:
+      tags: [Game]
+      summary: Deal one card to the player
+      description: Going over 21 ends the round as a loss.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GameIdRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GameState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /game/stand:
+    post:
+      tags: [Game]
+      summary: End the player's turn; the dealer draws to at least 17 and the round is scored
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GameIdRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GameState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /game/state:
+    get:
+      tags: [Game]
+      summary: Get the current state of one of your games
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/GameState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /attempts/me:
+    get:
+      tags: [Game]
+      summary: List your completed attempts, newest first, with your best score
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Your attempts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attempts:
+                    type: array
+                    items: { $ref: '#/components/schemas/Attempt' }
+                  bestScore: { type: integer, minimum: 0, maximum: 30 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Rank users by their best completed attempt
+      description: Public. Equal scores share a rank.
+      security: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+      responses:
+        '200':
+          description: Ranked players
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  players:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rank: { type: integer, example: 1 }
+                        username: { type: string, example: alice_1 }
+                        score: { type: integer, example: 27 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Item:
+      type: object
+      required: [_id, name, createdAt]
+      properties:
+        _id: { type: string, description: MongoDB document ID, example: 665f1c2e9b1e8a0012345678 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        createdAt: { type: string, format: date-time }
+    User:
+      type: object
+      properties:
+        id: { type: string, example: 665f1c2e9b1e8a0012345678 }
+        username: { type: string, example: alice_1 }
+        email: { type: string, example: alice@example.com }
+    EmailRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, example: alice@example.com }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    GameIdRequest:
+      type: object
+      required: [gameId]
+      properties:
+        gameId: { type: string, format: uuid }
+    Card:
+      type: object
+      properties:
+        rank: { type: string, enum: [A, '2', '3', '4', '5', '6', '7', '8', '9', '10', J, Q, K] }
+        suit: { type: string, enum: [clubs, diamonds, hearts, spades] }
+    RoundResult:
+      type: object
+      properties:
+        round: { type: integer }
+        outcome: { type: string, enum: [win, tie, loss] }
+        points: { type: integer, enum: [0, 1, 3] }
+    GameState:
+      type: object
+      properties:
+        gameId: { type: string, format: uuid }
+        round: { type: integer, minimum: 1, maximum: 10 }
+        roundsCompleted: { type: integer, minimum: 0, maximum: 10 }
+        playerCards:
+          type: array
+          items: { $ref: '#/components/schemas/Card' }
+        playerValue: { type: integer }
+        dealerCards:
+          type: array
+          description: Only the face-up card until the round is over.
+          items: { $ref: '#/components/schemas/Card' }
+        dealerValue: { type: integer, description: Present only when the round is over. }
+        roundOver: { type: boolean }
+        outcome: { type: string, enum: [win, tie, loss], nullable: true }
+        points: { type: integer, enum: [0, 1, 3], nullable: true }
+        totalPoints: { type: integer }
+        attemptComplete: { type: boolean, description: True after ten completed rounds. }
+    Attempt:
+      type: object
+      properties:
+        _id: { type: string, format: uuid, description: Same as the game ID. }
+        userId: { type: string }
+        sessionId: { type: string, format: uuid }
+        rounds:
+          type: array
+          items: { $ref: '#/components/schemas/RoundResult' }
+        score: { type: integer, minimum: 0, maximum: 30 }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+  responses:
+    GameState:
+      description: The game after the action
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GameState' }
+    Unauthorized:
+      description: Missing, invalid, or expired bearer token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Game or user not found (including games owned by another user)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Action not allowed in the current state (round over, attempt complete, or a concurrent move)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Message:
+      description: Success
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+    BadRequest:
+      description: Missing or invalid fields
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: 'Missing required field(s): email' }
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Unable to complete request }
