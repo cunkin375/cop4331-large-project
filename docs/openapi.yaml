@@ -14,11 +14,70 @@ servers:
   - url: http://localhost:5000/api
     description: Local development
 tags:
+  - name: System
   - name: Auth
   - name: Game
     description: An attempt is one game of exactly ten rounds. Wins score 3, ties 1, losses 0.
   - name: Leaderboard
 paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Check API and database availability
+      responses:
+        '200':
+          description: The database is connected
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, database]
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: connected }
+        '503':
+          description: The database is unavailable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /items:
+    get:
+      tags: [System]
+      summary: List the latest items
+      responses:
+        '200':
+          description: Up to 100 items, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Item' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [System]
+      summary: Create an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100, example: Example }
+      responses:
+        '201':
+          description: The created item
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Item' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /register:
     post:
       tags: [Auth]
@@ -314,6 +373,13 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    Item:
+      type: object
+      required: [_id, name, createdAt]
+      properties:
+        _id: { type: string, description: MongoDB document ID, example: 665f1c2e9b1e8a0012345678 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        createdAt: { type: string, format: date-time }
     User:
       type: object
       properties:
