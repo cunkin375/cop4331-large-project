@@ -1,0 +1,29 @@
+@startuml sequence-game
+' Sequence diagram: playing one round of blackjack.
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+title Blackjack: Playing a Round
+
+actor Player
+participant "App" as App
+participant "API" as API
+database "MongoDB" as DB
+
+Player -> App : Start game
+App -> API : POST /api/game/start
+API -> DB : Create game, deal cards
+API --> App : Player's cards, dealer's up card
+
+loop until the player stands or busts
+  Player -> App : Hit
+  App -> API : POST /api/game/hit
+  API --> App : New card
+end
+
+Player -> App : Stand
+App -> API : POST /api/game/stand
+API -> API : Dealer plays, score round\n(win 3, tie 1, loss 0)
+API -> DB : Save result
+API --> App : Outcome and points
+
+note over Player, DB : Repeat for 10 rounds. The final score goes to the leaderboard.
+@enduml

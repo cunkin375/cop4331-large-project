@@ -1,0 +1,37 @@
+@startuml erd
+' Entity-relationship diagram for the MongoDB collections.
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+title Blackjack: Entity-Relationship Diagram
+hide circle
+
+entity "users" as users {
+  * _id : ObjectId <<PK>>
+  --
+  username : string
+  email : string
+  passwordHash : string
+  emailVerified : boolean
+}
+
+entity "games" as games {
+  * _id : UUID <<PK>>
+  --
+  userId : ObjectId <<FK>>
+  round : int (1–10)
+  playerCards : Card[]
+  dealerCards : Card[]
+  totalPoints : int
+}
+
+entity "attempts" as attempts {
+  * _id : UUID <<PK>>
+  --
+  userId : ObjectId <<FK>>
+  score : int (0–30)
+  completedAt : date
+}
+
+users ||--o{ games : plays
+users ||--o{ attempts : has
+games ||--o| attempts : "becomes after round 10"
+@enduml
