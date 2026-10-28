@@ -3,7 +3,7 @@ import type { User } from '../types/user.ts';
 
 export interface AuthState {
     user: User | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (usernameOrEmail: string, password: string) => Promise<void>;
     logout: () => void;
 }
 

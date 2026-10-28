@@ -37,7 +37,7 @@ const LeaderboardPage = () => {
                                 <tr key={p.username} className="border-b border-white/10">
                                     <td className="py-3 pr-4">{p.rank}</td>
                                     <td className="py-3 pr-4 break-all">{p.username}</td>
-                                    <td className="py-3 text-right">{p.bestScore}</td>
+                                    <td className="py-3 text-right">{p.score}</td>
                                 </tr>
                             ))}
                         </tbody>

@@ -1,34 +1,35 @@
 import { apiFetch } from './client.ts';
 import type { User } from '../types/user.ts';
 
-// Draft contract: these endpoints still need to be built on the backend.
-
 export function register(username: string, email: string, password: string) {
-    return apiFetch<{ message: string }>('/api/auth/register', {
+    return apiFetch<{ message: string; user: User }>('/api/register', {
         method: 'POST', body: { username, email, password },
     });
 }
 
-export function login(email: string, password: string) {
-    return apiFetch<{ token: string; user: User }>('/api/auth/login', {
-        method: 'POST', body: { email, password },
+// The backend accepts either a username or an email to log in.
+export function login(usernameOrEmail: string, password: string) {
+    const identifier = usernameOrEmail.trim();
+    const field = identifier.includes('@') ? 'email' : 'username';
+    return apiFetch<{ token: string; user: User }>('/api/login', {
+        method: 'POST', body: { [field]: identifier, password },
     });
 }
 
 export function verifyEmail(token: string) {
-    return apiFetch<{ message: string }>('/api/auth/verify-email', { method: 'POST', body: { token } });
+    return apiFetch<{ message: string }>(`/api/verify-email?token=${encodeURIComponent(token)}`);
 }
 
 export function resendVerification(email: string) {
-    return apiFetch<{ message: string }>('/api/auth/resend-verification', { method: 'POST', body: { email } });
+    return apiFetch<{ message: string }>('/api/resend-verification', { method: 'POST', body: { email } });
 }
 
 export function forgotPassword(email: string) {
-    return apiFetch<{ message: string }>('/api/auth/forgot-password', { method: 'POST', body: { email } });
+    return apiFetch<{ message: string }>('/api/forgot-password', { method: 'POST', body: { email } });
 }
 
 export function resetPassword(token: string, password: string) {
-    return apiFetch<{ message: string }>('/api/auth/reset-password', {
+    return apiFetch<{ message: string }>('/api/reset-password', {
         method: 'POST', body: { token, password },
     });
 }

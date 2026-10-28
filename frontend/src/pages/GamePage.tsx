@@ -1,17 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 import AppHeader from '../components/AppHeader.tsx';
 import Hand from '../components/Hand.tsx';
-import * as game from '../api/mockGame.ts';
-import type { RoundState } from '../types/game.ts';
+import * as gameApi from '../api/game.ts';
+import { ApiError } from '../api/client.ts';
+import { ROUNDS_PER_ATTEMPT, type Card, type GameState } from '../types/game.ts';
 
-function resultMessage(round: RoundState): string {
-    const playerNatural = round.playerCards.length === 2 && round.playerTotal === 21;
-    switch (round.status) {
+const GAME_KEY = 'blackjack.gameId';
+
+function storedGameId(): string | null {
+    try { return localStorage.getItem(GAME_KEY); } catch { return null; }
+}
+
+function storeGameId(gameId: string | null): void {
+    try {
+        if (gameId) localStorage.setItem(GAME_KEY, gameId);
+        else localStorage.removeItem(GAME_KEY);
+    } catch { /* storage unavailable; the game just won't resume after a reload */ }
+}
+
+// Value of the dealer's up card, shown while the hole card is hidden.
+function cardValue({ rank }: Card): number {
+    if (rank === 'A') return 11;
+    return ['J', 'Q', 'K'].includes(rank) ? 10 : Number(rank);
+}
+
+function resultMessage(game: GameState): string {
+    const playerNatural = game.playerCards.length === 2 && game.playerValue === 21;
+    switch (game.outcome) {
         case 'win':
             if (playerNatural) return 'Blackjack! You win.';
-            return round.dealerTotal > 21 ? 'Dealer busts. You win!' : 'You win!';
+            return (game.dealerValue ?? 0) > 21 ? 'Dealer busts. You win!' : 'You win!';
         case 'loss':
-            return round.playerTotal > 21 ? 'Bust! You lose.' : 'Dealer wins.';
+            return game.playerValue > 21 ? 'Bust! You lose.' : 'Dealer wins.';
         case 'tie':
             return 'Push. It\'s a tie.';
         default:
@@ -20,32 +40,54 @@ function resultMessage(round: RoundState): string {
 }
 
 const GamePage = () => {
-    const [round, setRound] = useState<RoundState | null>(null);
+    const [game, setGame] = useState<GameState | null>(null);
+    const [loading, setLoading] = useState(() => storedGameId() !== null);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState('');
+    const busy = useRef(false);
     const nextButton = useRef<HTMLButtonElement>(null);
 
-    const roundOver = round !== null && round.status !== 'playing';
-    const attemptOver = roundOver && round.roundNumber === round.roundsPerAttempt;
+    const roundOver = game?.roundOver ?? false;
+
+    // Resume the saved game after a reload.
+    useEffect(() => {
+        const gameId = storedGameId();
+        if (!gameId) return;
+        gameApi.getGameState(gameId)
+            .then(setGame)
+            .catch(() => storeGameId(null))
+            .finally(() => setLoading(false));
+    }, []);
 
     // Move keyboard/screen-reader focus to the next action when a round ends.
     useEffect(() => {
         if (roundOver) nextButton.current?.focus();
     }, [roundOver]);
 
-    // Every action waits for the previous one, so rapid taps can't double-hit.
-    async function act(action: () => Promise<RoundState>) {
-        if (pending) return;
+    // The ref blocks a second tap that lands before the buttons re-render as disabled.
+    async function act(action: () => Promise<GameState>) {
+        if (busy.current) return;
+        busy.current = true;
         setPending(true);
         setError('');
         try {
-            setRound(await action());
+            const next = await action();
+            setGame(next);
+            storeGameId(next.gameId);
         } catch (e) {
+            if (e instanceof ApiError && e.status === 404) {
+                // The saved game is gone; let the player start fresh.
+                storeGameId(null);
+                setGame(null);
+            }
             setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
         } finally {
+            busy.current = false;
             setPending(false);
         }
     }
+
+    const nextRound = () => gameApi.startRound(game && !game.attemptComplete ? game.gameId : undefined);
 
     return (
         <div className="flex min-h-svh flex-col items-center gap-4 px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]
@@ -53,25 +95,27 @@ const GamePage = () => {
             <AppHeader />
             <main className="flex w-full flex-1 flex-col items-center gap-4 sm:flex-none sm:gap-6">
                 <h1 className="sr-only">Blackjack table</h1>
-                {round && (
+                {game && (
                     <p className="flex justify-center gap-6 tabular-nums">
-                        <span>Round {round.roundNumber} / {round.roundsPerAttempt}</span>
-                        <span>Score: {round.attemptScore}</span>
+                        <span>Round {game.round} / {ROUNDS_PER_ATTEMPT}</span>
+                        <span>Score: {game.totalPoints}</span>
                     </p>
                 )}
 
-                {round ? (
+                {loading ? (
+                    <p className="my-auto sm:my-12">Loading your game…</p>
+                ) : game ? (
                     <div className="flex flex-col gap-6">
                         <Hand
                             title="Dealer's Hand"
-                            cards={round.dealerCards}
-                            total={round.dealerTotal}
+                            cards={roundOver ? game.dealerCards : [...game.dealerCards, null]}
+                            total={game.dealerValue ?? cardValue(game.dealerCards[0])}
                             totalLabel={roundOver ? 'Dealer Hand Value' : 'Showing'}
                         />
                         <Hand
                             title="Your Hand"
-                            cards={round.playerCards}
-                            total={round.playerTotal}
+                            cards={game.playerCards}
+                            total={game.playerValue}
                             totalLabel="Hand Value"
                         />
                     </div>
@@ -83,18 +127,20 @@ const GamePage = () => {
                 )}
 
                 <div role="status" aria-live="polite" className="min-h-7 text-lg font-semibold">
-                    {error ? <span className="text-danger">{error}</span> : round && resultMessage(round)}
-                    {attemptOver && <span> Attempt complete: {round.attemptScore} points.</span>}
+                    {error ? <span className="text-danger">{error}</span> : game && resultMessage(game)}
+                    {game?.attemptComplete && <span> Attempt complete: {game.totalPoints} points.</span>}
                 </div>
 
                 {/* Actions sit at the bottom of the screen within thumb reach on phones. */}
                 <div className="mt-auto flex w-full max-w-90 justify-center gap-3 sm:mt-0">
-                    {round?.status === 'playing' ? (
+                    {game && !roundOver ? (
                         <>
-                            <button type="button" className="btn" disabled={pending} onClick={() => act(game.hit)}>
+                            <button type="button" className="btn" disabled={pending}
+                                onClick={() => act(() => gameApi.hit(game.gameId))}>
                                 Hit
                             </button>
-                            <button type="button" className="btn" disabled={pending} onClick={() => act(game.stand)}>
+                            <button type="button" className="btn" disabled={pending}
+                                onClick={() => act(() => gameApi.stand(game.gameId))}>
                                 Stand
                             </button>
                         </>
@@ -103,10 +149,10 @@ const GamePage = () => {
                             ref={nextButton}
                             type="button"
                             className="btn btn-primary"
-                            disabled={pending}
-                            onClick={() => act(game.startRound)}
+                            disabled={pending || loading}
+                            onClick={() => act(nextRound)}
                         >
-                            {!round ? 'Deal' : attemptOver ? 'Start New Attempt' : 'Next Round'}
+                            {!game ? 'Deal' : game.attemptComplete ? 'Start New Attempt' : 'Next Round'}
                         </button>
                     )}
                 </div>

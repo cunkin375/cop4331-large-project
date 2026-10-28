@@ -25,6 +25,13 @@ export function setToken(token: string | null): void {
     } catch { /* storage unavailable (private mode); stay logged in for this tab only */ }
 }
 
+// Called when the server rejects our token (expired after 2 hours, or invalid).
+let onUnauthorized: () => void = () => {};
+
+export function setUnauthorizedHandler(handler: () => void): void {
+    onUnauthorized = handler;
+}
+
 export async function apiFetch<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
     const headers: Record<string, string> = {};
     const token = getToken();
@@ -44,6 +51,7 @@ export async function apiFetch<T>(path: string, options: { method?: string; body
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+        if (response.status === 401 && token) onUnauthorized();
         throw new ApiError(response.status, data.error ?? 'Something went wrong. Please try again.');
     }
     return data as T;

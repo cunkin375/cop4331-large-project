@@ -6,17 +6,23 @@ export interface Card {
     suit: Suit;
 }
 
-export type RoundStatus = 'playing' | 'win' | 'loss' | 'tie';
+export type Outcome = 'win' | 'loss' | 'tie';
 
-// Shape the game API returns after every deal, hit, and stand.
-// The server owns the deck; the dealer's hole card is null until revealed.
-export interface RoundState {
+export const ROUNDS_PER_ATTEMPT = 10;
+
+// Shape the game API returns from start, hit, stand, and state.
+// While a round is in progress, dealerCards holds only the up card and dealerValue is omitted.
+export interface GameState {
+    gameId: string;
+    round: number;
+    roundsCompleted: number;
     playerCards: Card[];
-    dealerCards: (Card | null)[];
-    playerTotal: number;
-    dealerTotal: number; // total of the visible dealer cards only
-    status: RoundStatus;
-    roundNumber: number;
-    roundsPerAttempt: number;
-    attemptScore: number;
+    playerValue: number;
+    dealerCards: Card[];
+    dealerValue?: number;
+    roundOver: boolean;
+    outcome: Outcome | null;
+    points: number | null;
+    totalPoints: number;
+    attemptComplete: boolean;
 }

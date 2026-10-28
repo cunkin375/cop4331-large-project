@@ -48,8 +48,9 @@ const RegisterPage = () => {
     return (
         <AuthLayout title="Create an account">
             <form onSubmit={handleSubmit} className="grid gap-4">
-                <FormField label="Username" autoComplete="username" required minLength={3} maxLength={30}
-                    pattern="[A-Za-z0-9_]+" hint="3–30 letters, numbers, or underscores."
+                <FormField label="Username" autoComplete="username" autoCapitalize="none" spellCheck={false}
+                    required minLength={3} maxLength={20}
+                    pattern="[A-Za-z0-9_]+" hint="3–20 letters, numbers, or underscores."
                     value={username} onChange={(e) => setUsername(e.target.value)} />
                 <FormField label="Email" type="email" autoComplete="email" required
                     value={email} onChange={(e) => setEmail(e.target.value)} />
