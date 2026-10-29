@@ -1,30 +1,38 @@
-import nodemailer from 'nodemailer';
-
-let transporter;
-
-function getTransporter() {
-  if (!process.env.SMTP_HOST) throw new Error('SMTP_HOST is not configured');
-  transporter ??= nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: process.env.SMTP_USER
-      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      : undefined,
-  });
-  return transporter;
-}
-
-function send(user, subject, action, path, token, expiry) {
+async function send(user, subject, action, path, token, expiry) {
   const base = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '');
   const url = `${base}${path}?token=${encodeURIComponent(token)}`;
-  return getTransporter().sendMail({
-    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+  const key = process.env.API_KEY;
+  const domain = process.env.MAILGUN_DOMAIN || process.env.SMTP_USER?.split('@')[1];
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  if (!key) throw new Error('API_KEY is not configured');
+  if (!domain) throw new Error('MAILGUN_DOMAIN is not configured');
+  if (!from) throw new Error('MAIL_FROM is not configured');
+  const api = process.env.MAILGUN_API_URL || 'https://api.mailgun.net';
+  if (!['https://api.mailgun.net', 'https://api.eu.mailgun.net'].includes(api)) {
+    throw new Error('MAILGUN_API_URL must be a Mailgun HTTPS endpoint');
+  }
+  const fields = {
+    from,
     to: user.email,
     subject,
     text: `Hi ${user.username},\n\n${action} by opening this link:\n${url}\n\n`
       + `This link expires in ${expiry}. If you didn't request this, ignore this email.`,
+  };
+  const body = new FormData();
+  for (const [name, value] of Object.entries(fields)) body.set(name, value);
+  const response = await fetch(`${api}/v3/${encodeURIComponent(domain)}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${Buffer.from(`api:${key}`).toString('base64')}` },
+    body,
+    signal: AbortSignal.timeout(15000),
   });
+  if (!response.ok) {
+    // Do not include provider responses, tokens, or credentials in errors.
+    const error = new Error(`Mailgun request failed (HTTP ${response.status})`);
+    error.name = `MailgunHTTP${response.status}Error`;
+    throw error;
+  }
+  return response.json();
 }
 
 export function sendVerificationEmail(user, token) {

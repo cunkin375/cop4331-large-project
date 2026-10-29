@@ -66,7 +66,11 @@ Routes live in `server/routes/auth.js` and are documented in
 Auth uses the existing User model and its scrypt password hashing (12–128 character
 passwords). Only SHA-256 hashes of email tokens are stored. Accounts created before
 email verification existed (no `emailVerified` field, such as seeded users) can still log in.
-Set `JWT_SECRET`, `CLIENT_URL`, and the `SMTP_*` variables from `.env.example`.
+Set `JWT_SECRET`, `CLIENT_URL`, `API_KEY`, `MAILGUN_DOMAIN`, and `MAIL_FROM` from `.env.example`.
+Email is sent through Mailgun HTTPS, avoiding outbound SMTP restrictions.
+`MAILGUN_API_URL` defaults to `https://api.mailgun.net`; use
+`https://api.eu.mailgun.net` for EU domains. For existing deployments, the sending
+domain falls back to the domain in `SMTP_USER` if `MAILGUN_DOMAIN` is absent.
 Email links open `CLIENT_URL/verify-email` and `CLIENT_URL/reset-password`, which the
 frontend must handle.
 
