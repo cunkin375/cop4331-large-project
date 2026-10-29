@@ -22,4 +22,6 @@ jobs:
             cd /opt/blackjack/
             git config --global --add safe.directory /opt/blackjack
             git pull origin main
+            npm --prefix frontend ci
+            npm --prefix frontend run build
             npm install
