@@ -39,6 +39,15 @@
       placeholder:text-chalk/50;
   }
 
+  /* Overlap cards just enough that the whole hand fits its row; --n is the card count. */
+  .hand-card + .hand-card {
+    margin-left: min(calc(var(--card-w) * -0.4), calc((100% - var(--n) * var(--card-w)) / (var(--n) - 1)));
+
+    @variant sm {
+      margin-left: min(10px, calc((100% - var(--n) * var(--card-w)) / (var(--n) - 1)));
+    }
+  }
+
   .link {
     @apply font-semibold text-gold underline-offset-2 hover:underline;
   }
