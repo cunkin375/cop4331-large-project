@@ -1,0 +1,53 @@
+@startuml use-case
+' Use-case diagram for the web and mobile apps.
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+title Blackjack: Use-Case Diagram
+left to right direction
+
+actor Guest
+actor Player
+actor "Email Service" as Mail <<system>>
+Guest <|-- Player
+
+rectangle "Blackjack App (React web + Flutter mobile)" {
+  usecase "Register account" as Register
+  usecase "Verify email" as Verify
+  usecase "Resend verification email" as Resend
+  usecase "Log in" as Login
+  usecase "Reset forgotten password" as Reset
+  usecase "View leaderboard" as Board
+
+  usecase "Play 10-round attempt" as Attempt
+  usecase "Play a round" as Round
+  usecase "Hit" as Hit
+  usecase "Stand" as Stand
+  usecase "View my attempts and best score" as History
+  usecase "View profile" as Profile
+  usecase "Log out" as Logout
+}
+
+Guest --> Register
+Guest --> Verify
+Guest --> Resend
+Guest --> Login
+Guest --> Reset
+Guest --> Board
+
+Player --> Attempt
+Player --> History
+Player --> Profile
+Player --> Logout
+
+Attempt ..> Round : <<include>>
+Hit ..> Round : <<extend>>
+Stand ..> Round : <<extend>>
+
+Register --> Mail
+Resend --> Mail
+Reset --> Mail
+
+note right of Login
+  Refused until the
+  email is verified.
+end note
+@enduml
