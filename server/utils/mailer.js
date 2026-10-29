@@ -1,10 +1,10 @@
 async function send(user, subject, action, path, token, expiry) {
   const base = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '');
   const url = `${base}${path}?token=${encodeURIComponent(token)}`;
-  const key = process.env.API_KEY;
+  const key = process.env.MAILGUN_API_KEY;
   const domain = process.env.MAILGUN_DOMAIN || process.env.SMTP_USER?.split('@')[1];
   const from = process.env.MAIL_FROM || process.env.SMTP_USER;
-  if (!key) throw new Error('API_KEY is not configured');
+  if (!key) throw new Error('MAILGUN_API_KEY is not configured');
   if (!domain) throw new Error('MAILGUN_DOMAIN is not configured');
   if (!from) throw new Error('MAIL_FROM is not configured');
   const api = process.env.MAILGUN_API_URL || 'https://api.mailgun.net';

@@ -5,7 +5,7 @@ import { sendVerificationEmail, sendResetEmail } from './utils/mailer.js';
 test('Mailgun HTTPS delivery and safe failures', async t => {
   const originalEnv = { ...process.env };
   t.after(() => { process.env = originalEnv; });
-  for (const [key, value] of Object.entries({ API_KEY: 'test-key', MAILGUN_DOMAIN: 'mg.example.com', MAIL_FROM: 'App <mail@mg.example.com>', CLIENT_URL: 'https://example.com/', MAILGUN_API_URL: 'https://api.mailgun.net' })) {
+  for (const [key, value] of Object.entries({ MAILGUN_API_KEY: 'test-key', MAILGUN_DOMAIN: 'mg.example.com', MAIL_FROM: 'App <mail@mg.example.com>', CLIENT_URL: 'https://example.com/', MAILGUN_API_URL: 'https://api.mailgun.net' })) {
     process.env[key] = value;
   }
   const calls = [];
@@ -25,6 +25,6 @@ test('Mailgun HTTPS delivery and safe failures', async t => {
   assert.match(calls[1][1].body.get('text'), /reset-password\?token=reset/);
   fetchMock.mock.mockImplementation(async () => ({ ok: false, status: 401 }));
   await assert.rejects(sendResetEmail(user, 'secret'), { name: 'MailgunHTTP401Error', message: 'Mailgun request failed (HTTP 401)' });
-  process.env.API_KEY = ''; 
-  await assert.rejects(sendResetEmail(user, 'secret'), /API_KEY is not configured/);
+  process.env.MAILGUN_API_KEY = ''; 
+  await assert.rejects(sendResetEmail(user, 'secret'), /MAILGUN_API_KEY is not configured/);
 });
