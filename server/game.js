@@ -85,7 +85,11 @@ export function registerGameRoutes(app, db, { deckFactory = createDeck, requireA
             if (game.roundOver) return fail(res, 409, 'Round is already over');
             if (action === 'hit') {
               game.playerCards.push(game.deck.pop());
-              if (handValue(game.playerCards) > 21) settle(game);
+              const value = handValue(game.playerCards);
+              if (value === 21) {
+                playDealer(game.dealerCards, () => game.deck.pop());
+                settle(game);
+              } else if (value > 21) settle(game);
             } else {
               playDealer(game.dealerCards, () => game.deck.pop());
               settle(game);
