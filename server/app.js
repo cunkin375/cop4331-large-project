@@ -4,13 +4,28 @@ import { registerGameRoutes } from './game.js';
 import { createAuthRouter } from './routes/auth.js';
 import * as defaultMailer from './utils/mailer.js';
 import { errorHandler, notFound } from './middleware/errors.js';
+import { requireAuth as defaultRequireAuth } from './middleware/auth.js';
 
 // Pass { mailer } to replace email delivery (tests use a mock); other options go to the game routes.
-export function createApp(db, { mailer = defaultMailer, ...gameOptions } = {}) {
+export function createApp(db, { mailer = defaultMailer, requireAuth = defaultRequireAuth, ...gameOptions } = {}) {
   const app = express();
   app.disable('x-powered-by');
+  // Allow browser-based API demos without opening arbitrary cross-origin access.
+  const allowedOrigins = new Set((process.env.CORS_ORIGINS ?? 'https://app.swaggerhub.com,https://editor.swagger.io')
+    .split(',').map(origin => origin.trim()).filter(Boolean));
+  app.use('/api', (req, res, next) => {
+    res.vary('Origin');
+    const origin = req.get('Origin');
+    if (allowedOrigins.has(origin)) {
+      res.set('Access-Control-Allow-Origin', origin);
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+    }
+    next();
+  });
   app.use(express.json({ limit: '16kb' }));
-  registerGameRoutes(app, db, gameOptions);
+  registerGameRoutes(app, db, { ...gameOptions, requireAuth });
 
   app.get('/api/health', async (_req, res) => {
     try {
@@ -24,10 +39,14 @@ export function createApp(db, { mailer = defaultMailer, ...gameOptions } = {}) {
   app.get('/api/leaderboard', async (req, res, next) => {
     try {
       const limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
+      const rawQuery = req.query.q ?? '';
+      if (typeof rawQuery !== 'string' || rawQuery.trim().length > 30) {
+        return res.status(400).json({ error: 'q must be a string of at most 30 characters' });
+      }
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         return res.status(400).json({ error: 'limit must be an integer from 1 to 100' });
       }
-      res.json({ players: await new Leaderboard(db).bestAttempts(limit) });
+      res.json({ players: await new Leaderboard(db).bestAttempts(limit, rawQuery.trim()) });
     }
     catch (error) { next(error); }
   });

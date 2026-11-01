@@ -92,6 +92,7 @@ test('leaderboard returns tied ranks and validates limits', async () => {
     assert.equal(name, 'attempts');
     return { aggregate(pipeline) {
       assert.equal(pipeline.find(stage => stage.$limit).$limit, 3);
+      assert.ok(pipeline.findIndex(stage => stage.$limit) < pipeline.findIndex(stage => stage.$lookup));
       return { toArray: async () => [
         { username: 'ace', score: 30 }, { username: 'blair', score: 30 },
         { username: 'casey', score: 20 },
@@ -157,5 +158,123 @@ test('game state hides dealer cards and attempt history is scoped to the user', 
     const history = await fetch(`${url}/api/attempts/me`);
     assert.equal(history.status, 200);
     assert.deepEqual(await history.json(), { attempts, bestScore: 25 });
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('partial leaderboard search is escaped, case insensitive, and applied before limiting', async () => {
+  const db = { collection(name) {
+    if (name === 'leaderboard') return {};
+    assert.equal(name, 'attempts');
+    return { aggregate(pipeline) {
+      const matchIndex = pipeline.findIndex(stage => stage.$match);
+      assert.ok(matchIndex > pipeline.findIndex(stage => stage.$lookup));
+      assert.ok(matchIndex < pipeline.findIndex(stage => stage.$limit));
+      const search = pipeline[matchIndex].$match['user.username'];
+      const regex = new RegExp(search.$regex, search.$options);
+      assert.ok(regex.test('prefix_A.C_suffix'));
+      assert.ok(!regex.test('prefix_ABC_suffix'));
+      return { toArray: async () => [] };
+    } };
+  } };
+  await withApi(db, async url => {
+    const response = await fetch(`${url}/api/leaderboard?q=${encodeURIComponent(' '.repeat(35) + 'a.c' + ' '.repeat(35))}`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { players: [] });
+    for (const query of ['q=' + 'x'.repeat(31), 'q=a&q=b', 'q[$ne]=x']) {
+      assert.equal((await fetch(`${url}/api/leaderboard?${query}`)).status, 400);
+    }
+  });
+});
+
+test('default app authentication protects game state and moves without touching the database', async () => {
+  await withApi({}, async url => {
+    for (const action of ['start', 'hit', 'stand']) {
+      assert.equal((await fetch(`${url}/api/game/${action}`, { method: 'POST' })).status, 401);
+    }
+    assert.equal((await fetch(`${url}/api/game/state?gameId=00000000-0000-0000-0000-000000000001`)).status, 401);
+    assert.equal((await fetch(`${url}/api/attempts/me`)).status, 401);
+  });
+});
+
+test('SwaggerHub preflight permits JSON and JWT headers only for configured origins', async t => {
+  const original = process.env.CORS_ORIGINS;
+  process.env.CORS_ORIGINS = 'https://app.swaggerhub.com';
+  t.after(() => {
+    if (original === undefined) delete process.env.CORS_ORIGINS;
+    else process.env.CORS_ORIGINS = original;
+  });
+  await withApi({}, async url => {
+    const response = await fetch(`${url}/api/login`, { method: 'OPTIONS', headers: {
+      Origin: 'https://app.swaggerhub.com', 'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type,authorization',
+    } });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('access-control-allow-origin'), 'https://app.swaggerhub.com');
+    assert.match(response.headers.get('access-control-allow-headers'), /Authorization/);
+    const denied = await fetch(`${url}/api/login`, { method: 'OPTIONS', headers: { Origin: 'https://unknown.example' } });
+    assert.equal(denied.headers.get('access-control-allow-origin'), null);
+    const actual = await fetch(`${url}/api/me`, { headers: { Origin: 'https://app.swaggerhub.com' } });
+    assert.equal(actual.status, 401);
+    assert.equal(actual.headers.get('access-control-allow-origin'), 'https://app.swaggerhub.com');
+  });
+});
+
+test('empty CORS configuration denies origins; unset configuration uses defaults', async t => {
+  const original = process.env.CORS_ORIGINS;
+  t.after(() => {
+    if (original === undefined) delete process.env.CORS_ORIGINS;
+    else process.env.CORS_ORIGINS = original;
+  });
+  for (const value of ['', undefined]) {
+    if (value === undefined) delete process.env.CORS_ORIGINS;
+    else process.env.CORS_ORIGINS = value;
+    await withApi({}, async url => {
+      const response = await fetch(`${url}/api/me`, { headers: { Origin: 'https://app.swaggerhub.com' } });
+      assert.equal(response.headers.get('access-control-allow-origin'), value === '' ? null : 'https://app.swaggerhub.com');
+    });
+  }
+});
+
+test('game routes fail closed when injected middleware provides no valid user id', async () => {
+  for (const id of [undefined, '', 'invalid', { $ne: null }]) {
+    const server = createApp({}, { requireAuth(req, _res, next) {
+      req.user = { id }; next();
+    } }).listen(0, '127.0.0.1');
+    await new Promise(resolve => server.once('listening', resolve));
+    try {
+      const url = `http://127.0.0.1:${server.address().port}`;
+      for (const action of ['start', 'hit', 'stand']) {
+        const response = await fetch(`${url}/api/game/${action}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gameId: '00000000-0000-0000-0000-000000000001' }),
+        });
+        assert.equal(response.status, 401);
+      }
+      for (const path of ['/api/game/state?gameId=00000000-0000-0000-0000-000000000001', '/api/attempts/me']) {
+        assert.equal((await fetch(url + path)).status, 401);
+      }
+    } finally { await new Promise(resolve => server.close(resolve)); }
+  }
+});
+
+test('another user cannot read or modify a game', async () => {
+  const db = { collection(name) {
+    assert.equal(name, 'games');
+    return { findOne: async () => ({ userId: 'aaaaaaaaaaaaaaaaaaaaaaaa' }) };
+  } };
+  const server = createApp(db, { requireAuth(req, _res, next) {
+    req.user = { id: 'bbbbbbbbbbbbbbbbbbbbbbbb' }; next();
+  } }).listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}/api/game`;
+  const gameId = '00000000-0000-0000-0000-000000000001';
+  try {
+    assert.equal((await fetch(`${base}/state?gameId=${gameId}`)).status, 404);
+    for (const action of ['start', 'hit', 'stand']) {
+      const response = await fetch(`${base}/${action}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId }),
+      });
+      assert.equal(response.status, 404);
+    }
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
