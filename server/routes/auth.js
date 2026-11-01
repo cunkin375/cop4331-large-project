@@ -64,12 +64,9 @@ export function createAuthRouter(db, mailer) {
     const { password } = req.body;
     checkPassword(password);
 
-    const created = await new User(db).create({ username, email, password });
     const verify = issueToken(VERIFY_TTL_MS);
-    await users().updateOne({ _id: created._id }, { $set: {
-      emailVerified: false, verifyTokenHash: verify.hash, verifyTokenExpires: verify.expires,
-      updatedAt: new Date(),
-    } });
+    // Insert verification state with the account so concurrent logins cannot bypass it.
+    const created = await new User(db).create({ username, email, password, verification: verify });
     const user = { _id: created._id, username, email };
     deliver(() => mailer.sendVerificationEmail(user, verify.token));
     res.status(201).json({
