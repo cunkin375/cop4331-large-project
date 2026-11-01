@@ -108,6 +108,23 @@ test('rejects invalid IDs and missing games', async () => {
   });
 });
 
+test('hitting exactly 21 plays the dealer and settles without a stand request', async () => {
+  await fixture(() => deck('10', '9', '5', '7', '6', '2'), async post => {
+    const started = await post('start');
+    const game = await post('hit', { gameId: started.gameId });
+    assert.equal(game.status, 200);
+    assert.equal(game.playerValue, 21);
+    assert.equal(game.dealerValue, 18);
+    assert.equal(game.dealerCards.length, 3);
+    assert.equal(game.roundOver, true);
+    assert.equal(game.outcome, 'win');
+    assert.equal(game.totalPoints, 3);
+    assert.equal(game.roundsCompleted, 1);
+    assert.equal((await post('stand', { gameId: game.gameId })).status, 409);
+    assert.equal((await post('start', { gameId: game.gameId })).roundsCompleted, 1);
+  });
+});
+
 test('concurrent moves cannot settle or score a round twice', async () => {
   await fixture(() => deck('10', '9', '8', '7', '2'), async post => {
     const { gameId } = await post('start');
