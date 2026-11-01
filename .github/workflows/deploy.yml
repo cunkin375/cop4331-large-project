@@ -1,12 +1,35 @@
 name: Deploy to DigitalOcean Droplet
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+      - run: npm --prefix frontend ci
+      - run: npm test
+      - run: npm run test:seed
+      - run: npm --prefix frontend run build
+      - run: npm --prefix frontend run lint
+
   deploy:
+    needs: test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -19,9 +42,13 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -eu
             cd /opt/blackjack/
             git config --global --add safe.directory /opt/blackjack
-            git pull origin main
+            git pull --ff-only origin main
+            npm ci
             npm --prefix frontend ci
             npm --prefix frontend run build
-            npm install
+            sudo -n systemctl restart blackjack
+            api_port=$(node --env-file=.env --input-type=module -e 'const port = Number(process.env.PORT || 5000); if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT"); process.stdout.write(String(port));')
+            curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 2 "http://127.0.0.1:${api_port}/api/health"
