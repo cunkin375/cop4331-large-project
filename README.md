@@ -60,18 +60,9 @@ Heads up: the team database is the same one the live site uses, so accounts and 
 
 ```sh
 npm test                          # API tests, no database needed
-npm run test:seed                 # Seed tests, no database needed
-npm run test:db                   # Real MongoDB model checks; temporary records
-npm run test:api:db               # Real MongoDB HTTP checks; captured email tokens
 npm --prefix frontend run build
 npm --prefix frontend run lint
 ```
-
-Database checks use the connection in `.env` and remove their own temporary
-records; prefer a dedicated test database. If Node rejects the certificate chain
-on Windows, run the integration scripts with `node --use-system-ca --env-file=.env`
-as documented in [`docs/lab-demo.md`](docs/lab-demo.md). Actual email delivery and
-browser flows should also be rehearsed against the deployed domain.
 
 ## API
 
@@ -96,27 +87,23 @@ The full spec is in [`docs/openapi.yaml`](docs/openapi.yaml). Routes marked "yes
 
 You can't log in until your email is verified. Passwords must be 12 to 128 characters.
 
-The leaderboard accepts `q` for case-insensitive partial username search, e.g.
-`/api/leaderboard?q=ace&limit=10`. MongoDB filters before limiting; ranks are within
-the matching players. Only users with completed attempts appear. The web leaderboard
-search sends requests to the server as you type.
-
-For lab steps, remaining requirements, and importable Postman/SwaggerHub files, see
-[`docs/lab-demo.md`](docs/lab-demo.md).
+Search the leaderboard with `/api/leaderboard?q=ace&limit=10`. The server matches
+partial usernames without case sensitivity. Only players with completed attempts
+appear; ranks are within the matching results.
 
 ## Docs
 
-The [`diagrams/`](diagrams/) folder has the Gantt chart, ERD, use-case diagram,
-game sequence diagram, and authentication activity diagram. To view a `.puml`
-file, paste it into https://www.plantuml.com/plantuml or open it with the VS Code
-PlantUML extension.
+The [`diagrams/`](diagrams/) folder has the Gantt chart, ERD, use-case, game sequence,
+and authentication activity diagrams. To view a `.puml` file, paste it into
+https://www.plantuml.com/plantuml or open it with the VS Code PlantUML extension.
+
+See [`docs/api-demo.md`](docs/api-demo.md) for the Postman/ARC lab walkthrough,
+the two-endpoint SwaggerHub demo, and test database setup. Integration tests
+require `MONGODB_DB` to end in `_test`; never use the shared live database.
 
 ## Deployment
 
-Pushing to `main` runs `.github/workflows/deploy.yml`, which pulls the code, installs
-locked dependencies, runs API tests, builds the frontend, restarts the API, and
-checks database health. The SSH deployment user needs permission to run
-`sudo -n systemctl restart blackjack`. A failed step stops the deployment.
+Pushing to `main` runs `.github/workflows/deploy.yml`, which pulls the code on the server and installs packages. Rebuilding the frontend and restarting the API are still done by hand on the server.
 
 A new server is set up with the scripts in `deploy/`:
 

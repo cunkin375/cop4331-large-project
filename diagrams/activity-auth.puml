@@ -1,39 +1,16 @@
 @startuml activity-auth
-title Blackjack: Registration and Login Activity
+title Blackjack: Registration and Login
 start
-:Open deployed web application;
-if (Has an account?) then (no)
-  :Enter username, email, password;
-  :POST /api/register;
-  if (Valid and unique?) then (yes)
-    :Insert unverified user with password hash
-and expiring verification token hash;
-    :Send verification email;
-    :Open email link in web app;
-    :GET /api/verify-email;
-    if (Token valid and unexpired?) then (yes)
-      :Mark email verified and consume token;
-    else (no)
-      :Request a new verification link;
-      stop
-    endif
-  else (no)
-    :Show validation or duplicate-account error;
-    stop
-  endif
-endif
-:Enter username/email and password;
-:POST /api/login;
-if (Credentials valid?) then (yes)
-  if (Email verified?) then (yes)
-    :Return two-hour JWT and public user;
-    :Open game and send bearer token
-with protected API requests;
-  else (no)
-    :Show verification required (403);
-  endif
-else (no)
-  :Show invalid credentials (401);
-endif
+:Open app;
+:Enter account details;
+:Register;
+:Save unverified account;
+:Send verification email;
+:Open email link;
+:Verify email;
+:Enter login credentials;
+:Validate credentials;
+:Return JWT;
+:Open game;
 stop
 @enduml

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import { createApp } from './app.js';
+import { User } from './models/User.js';
 
 process.env.JWT_SECRET ||= 'test-only-jwt-secret';
 
@@ -108,6 +109,24 @@ test('register creates an unverified user, stores only the token hash, and sends
     assert.equal(stored.verifyTokenHash, sha256(token));
     assert.ok(stored.verifyTokenExpires > new Date(Date.now() + 23 * 3600 * 1000));
     assert.ok(!stored.passwordHash.includes(PASSWORD));
+  });
+});
+
+test('User.create explicitly marks accounts unverified without a verification token', async () => {
+  let inserted;
+  const db = { collection: () => ({ insertOne: async doc => {
+    inserted = doc; return { insertedId: new ObjectId() };
+  } }) };
+  await new User(db).create(alice);
+  assert.equal(inserted.emailVerified, false);
+  assert.equal(inserted.verifyTokenHash, undefined);
+});
+
+test('legacy accounts without emailVerified retain login compatibility', async () => {
+  await withAuthApi(async (api, users) => {
+    await api.post('/register', alice);
+    delete users[0].emailVerified;
+    assert.equal((await api.post('/login', alice)).status, 200);
   });
 });
 

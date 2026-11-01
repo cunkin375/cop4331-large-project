@@ -6,18 +6,22 @@ const LeaderboardPage = () => {
     const [players, setPlayers] = useState<LeaderboardEntry[] | null>(null);
     const [error, setError] = useState('');
     const [query, setQuery] = useState('');
+    const [resultQuery, setResultQuery] = useState('');
 
     useEffect(() => {
         let active = true;
-        const timer = window.setTimeout(() => {
+        const load = () => {
             setError('');
-            setPlayers(null);
             getLeaderboard(query)
-                .then(({ players }) => { if (active) setPlayers(players); })
+                .then(({ players }) => {
+                    if (active) { setPlayers(players); setResultQuery(query.trim()); }
+                })
                 .catch((e) => {
                     if (active) setError(e instanceof Error ? e.message : 'Could not load the leaderboard.');
                 });
-        }, 250);
+        };
+        if (!query) load();
+        const timer = query ? window.setTimeout(load, 250) : undefined;
         return () => { active = false; window.clearTimeout(timer); };
     }, [query]);
 
@@ -36,7 +40,7 @@ const LeaderboardPage = () => {
 
                 {error && <p role="alert" className="text-center font-semibold text-danger">{error}</p>}
                 {!error && !players && <p className="text-center">Loading…</p>}
-                {players?.length === 0 && <p className="text-center">{query.trim() ? 'No matching players with completed attempts.' : 'No completed attempts yet. Be the first!'}</p>}
+                {players?.length === 0 && <p className="text-center">{resultQuery ? 'No players match.' : 'No completed attempts yet.'}</p>}
 
                 {players && players.length > 0 && (
                     <table className="w-full border-collapse tabular-nums">

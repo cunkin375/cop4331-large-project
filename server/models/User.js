@@ -28,8 +28,9 @@ export class User {
       username, usernameKey: username.toLowerCase(), email: email.trim().toLowerCase(),
       passwordHash, earningsCents: 0,
       gamesPlayed: 0, wins: 0, losses: 0, pushes: 0, createdAt: now, updatedAt: now,
+      emailVerified: false,
       ...(verification ? {
-        emailVerified: false, verifyTokenHash: verification.hash, verifyTokenExpires: verification.expires,
+        verifyTokenHash: verification.hash, verifyTokenExpires: verification.expires,
       } : {}),
     };
     const { insertedId } = await this.collection.insertOne(user);
