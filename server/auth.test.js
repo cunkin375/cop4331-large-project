@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
+import jwt from 'jsonwebtoken';
 import { createApp } from './app.js';
 
 process.env.JWT_SECRET ||= 'test-only-jwt-secret';
@@ -24,6 +25,9 @@ function fakeDb() {
   const users = {
     docs,
     async insertOne(doc) {
+      // Registration must be unverified from the first write, without an update gap.
+      assert.equal(doc.emailVerified, false);
+      assert.equal(typeof doc.verifyTokenHash, 'string');
       for (const key of ['email', 'usernameKey']) {
         if (docs.some(existing => existing[key] === doc[key])) {
           throw Object.assign(new Error('duplicate key'), { code: 11000, keyPattern: { [key]: 1 } });
@@ -208,6 +212,21 @@ test('/api/me requires a valid bearer token', async () => {
   await withAuthApi(async api => {
     assert.equal((await api.get('/me')).status, 401);
     assert.equal((await api.get('/me', 'not-a-jwt')).status, 401);
+  });
+});
+
+test('expired tokens, unsupported algorithms, and invalid subjects are rejected', async () => {
+  await withAuthApi(async api => {
+    const id = '0123456789abcdef01234567';
+    const secret = process.env.JWT_SECRET;
+    for (const token of [
+      jwt.sign({ id }, secret, { expiresIn: -1 }),
+      jwt.sign({ id }, secret, { algorithm: 'HS384' }),
+      jwt.sign({ id: 'not-an-object-id' }, secret),
+      jwt.sign({ username: 'alice_1' }, secret),
+    ]) {
+      assert.equal((await api.get('/me', token)).status, 401);
+    }
   });
 });
 

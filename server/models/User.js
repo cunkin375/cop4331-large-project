@@ -15,7 +15,7 @@ export async function hashPassword(password) {
 export class User {
   constructor(db) { this.collection = db.collection('users'); }
 
-  async create({ username, email, password }) {
+  async create({ username, email, password, verification }) {
     if (typeof username !== 'string' || !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
       throw new TypeError('Username must contain 3–30 letters, digits, or underscores');
     }
@@ -28,6 +28,9 @@ export class User {
       username, usernameKey: username.toLowerCase(), email: email.trim().toLowerCase(),
       passwordHash, earningsCents: 0,
       gamesPlayed: 0, wins: 0, losses: 0, pushes: 0, createdAt: now, updatedAt: now,
+      ...(verification ? {
+        emailVerified: false, verifyTokenHash: verification.hash, verifyTokenExpires: verification.expires,
+      } : {}),
     };
     const { insertedId } = await this.collection.insertOne(user);
     return { _id: insertedId, username, earningsCents: 0 };

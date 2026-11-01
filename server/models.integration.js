@@ -33,8 +33,17 @@ try {
   assert.ok(leaders.every((p, i) => i === 0 || leaders[i - 1].earningsCents >= p.earningsCents));
   await users.recordGame(ids[0], 1000000);
   assert.equal((await new Leaderboard(db).top10())[0]._id.toString(), ids[0].toString());
-  console.log('MongoDB integration checks passed: authentication, unique identities, game totals, and live top 10');
+  // Search must include a matching player outside the unfiltered first page.
+  await db.collection('attempts').insertMany(ids.map((id, i) => ({
+    _id: `${prefix}_${i}`, sessionId: `${prefix}_${i}`, user: id, userId: id,
+    score: i, createdAt: new Date(), completedAt: new Date(), rounds: [],
+  })));
+  const matches = await new Leaderboard(db).bestAttempts(1, `${prefix.toUpperCase()}_0`);
+  assert.deepEqual(matches, [{ rank: 1, username: `${prefix}_0`, score: 0 }]);
+  assert.deepEqual(await new Leaderboard(db).bestAttempts(10, `${prefix}.*`), []);
+  console.log('MongoDB integration checks passed: authentication, unique identities, game totals, live top 10, and partial search before limiting');
 } finally {
+  await db.collection('attempts').deleteMany({ userId: { $in: ids } });
   await db.collection('users').deleteMany({ _id: { $in: ids } });
   await client.close();
 }

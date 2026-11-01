@@ -7,7 +7,7 @@ export async function initializeModels(db) {
   await db.collection('attempts').createIndex({ score: -1, completedAt: 1 });
   await db.collection('attempts').createIndex({ userId: 1, completedAt: -1 });
   await db.collection('attempts').createIndex({ sessionId: 1 }, { unique: true });
-  await db.collection('gameSessions').createIndex({ user: 1, attemptStatus: 1 });
+  await db.collection('games').createIndex({ userId: 1, attemptStatus: 1 });
   const validator = { $jsonSchema: {
     bsonType: 'object',
     required: ['username', 'usernameKey', 'email', 'passwordHash', 'earningsCents', 'gamesPlayed', 'wins', 'losses', 'pushes', 'createdAt', 'updatedAt'],
