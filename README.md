@@ -87,9 +87,19 @@ The full spec is in [`docs/openapi.yaml`](docs/openapi.yaml). Routes marked "yes
 
 You can't log in until your email is verified. Passwords must be 12 to 128 characters.
 
+Search the leaderboard with `/api/leaderboard?q=ace&limit=10`. The server matches
+partial usernames without case sensitivity. Only players with completed attempts
+appear; ranks are within the matching results.
+
 ## Docs
 
-The [`diagrams/`](diagrams/) folder has the Gantt chart, ERD, use-case diagram and sequence diagram. To view a `.puml` file, paste it into https://www.plantuml.com/plantuml or open it with the VS Code PlantUML extension.
+The [`diagrams/`](diagrams/) folder has the Gantt chart, ERD, use-case, game sequence,
+and authentication activity diagrams. To view a `.puml` file, paste it into
+https://www.plantuml.com/plantuml or open it with the VS Code PlantUML extension.
+
+See [`docs/api-demo.md`](docs/api-demo.md) for the Postman/ARC lab walkthrough,
+the two-endpoint SwaggerHub demo, and test database setup. Integration tests
+require `MONGODB_DB` to end in `_test`; never use the shared live database.
 
 ## Deployment
 

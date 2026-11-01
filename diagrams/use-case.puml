@@ -16,6 +16,7 @@ rectangle "Blackjack App (React web + Flutter mobile)" {
   usecase "Log in" as Login
   usecase "Reset forgotten password" as Reset
   usecase "View leaderboard" as Board
+  usecase "Search players by partial username" as Search
 
   usecase "Play 10-round attempt" as Attempt
   usecase "Play a round" as Round
@@ -32,6 +33,8 @@ Guest --> Resend
 Guest --> Login
 Guest --> Reset
 Guest --> Board
+Guest --> Search
+Search ..> Board : <<extend>>
 
 Player --> Attempt
 Player --> History
