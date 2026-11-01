@@ -9,21 +9,28 @@ participant "API" as API
 database "MongoDB" as DB
 
 Player -> App : Start game
-App -> API : POST /api/game/start
+App -> API : POST /api/game/start\nAuthorization: Bearer JWT
 API -> DB : Create game, deal cards
 API --> App : Player's cards, dealer's up card
 
-loop until the player stands or busts
+loop while round is active and player chooses hit
   Player -> App : Hit
-  App -> API : POST /api/game/hit
+  App -> API : POST /api/game/hit\n{ gameId } + bearer JWT
+  API -> DB : Save updated game (version checked)
   API --> App : New card
 end
 
-Player -> App : Stand
-App -> API : POST /api/game/stand
-API -> API : Dealer plays, score round\n(win 3, tie 1, loss 0)
-API -> DB : Save result
-API --> App : Outcome and points
+alt round still active and player stands
+  Player -> App : Stand
+  App -> API : POST /api/game/stand\n{ gameId } + bearer JWT
+  API -> API : Dealer plays, score round\n(win 3, tie 1, loss 0)
+  API -> DB : Save result (version checked)
+  API --> App : Outcome and points
+else round already ended by natural blackjack or bust
+  App -> App : Display outcome from start/hit response
+end
+
+note over API, DB : On round 10, save the completed attempt once\nusing the session ID before returning the response.
 
 note over Player, DB : Repeat for 10 rounds. The final score goes to the leaderboard.
 @enduml

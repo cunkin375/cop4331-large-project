@@ -26,6 +26,9 @@ export function requireAuth(req, res, next) {
     }
     return next(error);
   }
+  if (typeof payload.id !== 'string' || !/^[a-f\d]{24}$/i.test(payload.id)) {
+    return res.status(401).json({ error: 'Invalid token subject' });
+  }
   req.user = { id: payload.id, username: payload.username };
   next();
 }

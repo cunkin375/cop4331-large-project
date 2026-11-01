@@ -11,14 +11,17 @@ export class Leaderboard {
     return players.map((player, index) => ({ rank: index + 1, ...player }));
   }
 
-  async bestAttempts(limit = 10) {
+  async bestAttempts(limit = 10, query = '') {
+    // Treat search as literal text, never as a client-supplied regular expression.
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const rows = await this.db.collection('attempts').aggregate([
       { $sort: { score: -1, completedAt: 1 } },
       { $group: { _id: '$user', score: { $first: '$score' }, completedAt: { $first: '$completedAt' } } },
       { $sort: { score: -1, _id: 1 } },
-      { $limit: limit },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
+      ...(query ? [{ $match: { 'user.username': { $regex: escaped, $options: 'i' } } }] : []),
+      { $limit: limit },
       { $project: { _id: 0, username: '$user.username', score: 1 } },
     ]).toArray();
     let previousScore;
