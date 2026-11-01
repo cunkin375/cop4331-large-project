@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
-import { MongoClient } from 'mongodb';
-import { User, Leaderboard, initializeModels } from './models/index.js';
-const client = new MongoClient(process.env.MONGODB_URI);
-await client.connect();
-const db = client.db(process.env.MONGODB_DB);
-const ids = [];
-try {
-  await initializeModels(db);
+import { runIntegration } from './integrationDb.js';
+import { User, Leaderboard } from './models/index.js';
+await runIntegration(async (db, signal) => {
+  const ids = [];
   const users = new User(db);
   const prefix = `verify_${Date.now()}`;
   for (let i = 0; i < 12; i++) {
+    signal.throwIfAborted();
     const user = await users.create({ username: `${prefix}_${i}`, email: `${prefix}_${i}@example.com`, password: 'verification-password-123' });
     ids.push(user._id);
     await users.recordGame(user._id, (i + 1) * 100);
@@ -33,8 +30,13 @@ try {
   assert.ok(leaders.every((p, i) => i === 0 || leaders[i - 1].earningsCents >= p.earningsCents));
   await users.recordGame(ids[0], 1000000);
   assert.equal((await new Leaderboard(db).top10())[0]._id.toString(), ids[0].toString());
-  console.log('MongoDB integration checks passed: authentication, unique identities, game totals, and live top 10');
-} finally {
-  await db.collection('users').deleteMany({ _id: { $in: ids } });
-  await client.close();
-}
+  // Search must include a matching player outside the unfiltered first page.
+  await db.collection('attempts').insertMany(ids.map((id, i) => ({
+    _id: `${prefix}_${i}`, sessionId: `${prefix}_${i}`, user: id, userId: id,
+    score: i, createdAt: new Date(), completedAt: new Date(), rounds: [],
+  })));
+  const matches = await new Leaderboard(db).bestAttempts(1, `${prefix.toUpperCase()}_0`);
+  assert.deepEqual(matches, [{ rank: 1, username: `${prefix}_0`, score: 0 }]);
+  assert.deepEqual(await new Leaderboard(db).bestAttempts(10, `${prefix}.*`), []);
+  console.log('MongoDB integration checks passed: authentication, unique identities, game totals, live top 10, and partial search before limiting');
+});
