@@ -341,9 +341,14 @@ paths:
     get:
       tags: [Leaderboard]
       summary: Rank users by their best completed attempt
-      description: Public. Equal scores share a rank.
+      description: Public. Case-insensitive partial username search runs on the server before limiting. Equal scores share a rank within the matching results. Only players with completed attempts appear.
       security: []
       parameters:
+        - name: q
+          in: query
+          required: false
+          description: Literal partial username; trimmed and matched ignoring case. Empty lists all players.
+          schema: { type: string, maxLength: 30, example: ace }
         - name: limit
           in: query
           required: false
