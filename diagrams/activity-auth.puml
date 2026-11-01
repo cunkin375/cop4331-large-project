@@ -1,0 +1,16 @@
+@startuml activity-auth
+title Blackjack: Registration and Login
+start
+:Open app;
+:Enter account details;
+:Register;
+:Save unverified account;
+:Send verification email;
+:Open email link;
+:Verify email;
+:Enter login credentials;
+:Validate credentials;
+:Return JWT;
+:Open game;
+stop
+@enduml

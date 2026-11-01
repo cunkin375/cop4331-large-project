@@ -1,0 +1,160 @@
+# Demo subset only. openapi.yaml is the full API specification.
+openapi: 3.0.3
+info:
+  title: Blackjack API Demo
+  version: 1.0.0
+  description: Live registration and login demonstration. Verify the email through
+    the web app before login.
+servers:
+- url: https://cruddylit.com/api
+  description: Production
+tags:
+- name: Auth
+paths:
+  /register:
+    post:
+      tags:
+      - Auth
+      summary: Create an account and send a verification email
+      description: Does not log the user in. The verification link expires after 24
+        hours.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - username
+              - email
+              - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 20
+                  pattern: ^[a-zA-Z0-9_]+$
+                  example: alice_1
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 12
+                  maxLength: 128
+      responses:
+        '201':
+          description: Account created; verification email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Username or email already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: That username is already taken
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /login:
+    post:
+      tags:
+      - Auth
+      summary: Log in with username or email
+      description: Send either `username` or `email`; either field may hold a username
+        or an email address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - password
+              properties:
+                username:
+                  type: string
+                  example: alice_1
+                email:
+                  type: string
+                  example: alice@example.com
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Logged in. The JWT expires after 2 hours.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: HS256 JWT with payload { id, username }
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Wrong username/email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Email address not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 665f1c2e9b1e8a0012345678
+        username:
+          type: string
+          example: alice_1
+        email:
+          type: string
+          example: alice@example.com
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+  responses:
+    BadRequest:
+      description: Missing or invalid fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Missing required field(s): email'
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Unable to complete request
