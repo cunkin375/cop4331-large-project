@@ -18,10 +18,11 @@ export class Leaderboard {
       { $sort: { score: -1, completedAt: 1 } },
       { $group: { _id: '$user', score: { $first: '$score' }, completedAt: { $first: '$completedAt' } } },
       { $sort: { score: -1, _id: 1 } },
+      ...(!query ? [{ $limit: limit }] : []),
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
       ...(query ? [{ $match: { 'user.username': { $regex: escaped, $options: 'i' } } }] : []),
-      { $limit: limit },
+      ...(query ? [{ $limit: limit }] : []),
       { $project: { _id: 0, username: '$user.username', score: 1 } },
     ]).toArray();
     let previousScore;

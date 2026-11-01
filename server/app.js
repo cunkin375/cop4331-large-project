@@ -11,7 +11,7 @@ export function createApp(db, { mailer = defaultMailer, requireAuth = defaultReq
   const app = express();
   app.disable('x-powered-by');
   // Allow browser-based API demos without opening arbitrary cross-origin access.
-  const allowedOrigins = new Set((process.env.CORS_ORIGINS || 'https://app.swaggerhub.com,https://editor.swagger.io')
+  const allowedOrigins = new Set((process.env.CORS_ORIGINS ?? 'https://app.swaggerhub.com,https://editor.swagger.io')
     .split(',').map(origin => origin.trim()).filter(Boolean));
   app.use('/api', (req, res, next) => {
     res.vary('Origin');
@@ -39,14 +39,14 @@ export function createApp(db, { mailer = defaultMailer, requireAuth = defaultReq
   app.get('/api/leaderboard', async (req, res, next) => {
     try {
       const limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
-      const q = req.query.q ?? '';
-      if (typeof q !== 'string' || q.length > 30) {
+      const rawQuery = req.query.q ?? '';
+      if (typeof rawQuery !== 'string' || rawQuery.trim().length > 30) {
         return res.status(400).json({ error: 'q must be a string of at most 30 characters' });
       }
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         return res.status(400).json({ error: 'limit must be an integer from 1 to 100' });
       }
-      res.json({ players: await new Leaderboard(db).bestAttempts(limit, q.trim()) });
+      res.json({ players: await new Leaderboard(db).bestAttempts(limit, rawQuery.trim()) });
     }
     catch (error) { next(error); }
   });

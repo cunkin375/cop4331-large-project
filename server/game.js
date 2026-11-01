@@ -49,12 +49,12 @@ export function registerGameRoutes(app, db, { deckFactory = createDeck, requireA
       try {
         const { gameId } = req.body || {};
         const authenticatedUserId = req.user?.id;
+        if (typeof authenticatedUserId !== 'string' || !/^[a-f\d]{24}$/i.test(authenticatedUserId)) {
+          return fail(res, 401, 'Authentication required');
+        }
         let game;
         let version;
         if (action === 'start' && gameId === undefined) {
-          if (typeof authenticatedUserId !== 'string' || !/^[a-f\d]{24}$/i.test(authenticatedUserId)) {
-            return fail(res, 401, 'Authentication required');
-          }
           const owner = new ObjectId(authenticatedUserId);
           if (!await db.collection('users').findOne({ _id: owner })) return fail(res, 404, 'User not found');
           game = {
@@ -68,7 +68,7 @@ export function registerGameRoutes(app, db, { deckFactory = createDeck, requireA
           if (typeof gameId !== 'string' || !/^[a-f\d-]{36}$/i.test(gameId)) return fail(res, 400, 'A valid gameId is required');
           game = await db.collection('games').findOne({ _id: gameId });
           if (!game) return fail(res, 404, 'Game not found');
-          if (authenticatedUserId && game.userId?.toString() !== authenticatedUserId) {
+          if (game.userId?.toString() !== authenticatedUserId) {
             return fail(res, 404, 'Game not found');
           }
           if (game.results.length === 10) {
@@ -85,7 +85,11 @@ export function registerGameRoutes(app, db, { deckFactory = createDeck, requireA
             if (game.roundOver) return fail(res, 409, 'Round is already over');
             if (action === 'hit') {
               game.playerCards.push(game.deck.pop());
-              if (handValue(game.playerCards) > 21) settle(game);
+              const value = handValue(game.playerCards);
+              if (value === 21) {
+                playDealer(game.dealerCards, () => game.deck.pop());
+                settle(game);
+              } else if (value > 21) settle(game);
             } else {
               playDealer(game.dealerCards, () => game.deck.pop());
               settle(game);
@@ -110,12 +114,16 @@ export function registerGameRoutes(app, db, { deckFactory = createDeck, requireA
 
   const stateHandler = async (req, res, next) => {
     try {
+      const userId = req.user?.id;
+      if (typeof userId !== 'string' || !/^[a-f\d]{24}$/i.test(userId)) {
+        return fail(res, 401, 'Authentication required');
+      }
       const { gameId } = req.query;
       if (typeof gameId !== 'string' || !/^[a-f\d-]{36}$/i.test(gameId)) {
         return fail(res, 400, 'A valid gameId is required');
       }
       const game = await db.collection('games').findOne({ _id: gameId });
-      if (!game || (req.user?.id && game.userId?.toString() !== req.user.id)) {
+      if (!game || game.userId?.toString() !== userId) {
         return fail(res, 404, 'Game not found');
       }
       res.json(publicState(game));
