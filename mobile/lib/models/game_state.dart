@@ -19,3 +19,33 @@ class PlayingCard {
 
   String get imagePath => 'assets/cards/${_rankNames[rank]}_of_$suit.png';
 }
+
+class GameState {
+  final String gameId;
+  final int round;
+  final int roundsCompleted;
+  final List<PlayingCard> playerCards;
+  final int playerValue;
+  final List<PlayingCard> dealerCards;
+  final int? dealerValue;
+  final bool roundOver;
+  final String? outcome;
+  final int? points;
+  final int totalPoints;
+  final bool attemptComplete;
+
+  const GameState({
+    required this.gameId,
+    required this.round,
+    required this.roundsCompleted,
+    required this.playerCards,
+    required this.playerValue,
+    required this.dealerCards,
+    this.dealerValue,
+    required this.roundOver,
+    this.outcome,
+    this.points,
+    required this.totalPoints,
+    required this.attemptComplete,
+  });
+}
