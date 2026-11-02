@@ -48,4 +48,25 @@ class GameState {
     required this.totalPoints,
     required this.attemptComplete,
   });
+
+    factory GameState.fromJson(Map<String, dynamic> json) {
+    List<PlayingCard> cards(String key) => (json[key] as List)
+        .map((c) => PlayingCard.fromJson(c as Map<String, dynamic>))
+        .toList();
+
+    return GameState(
+      gameId: json['gameId'] as String,
+      round: json['round'] as int,
+      roundsCompleted: json['roundsCompleted'] as int,
+      playerCards: cards('playerCards'),
+      playerValue: json['playerValue'] as int,
+      dealerCards: cards('dealerCards'),
+      dealerValue: json['dealerValue'] as int?,
+      roundOver: json['roundOver'] as bool,
+      outcome: json['outcome'] as String?,
+      points: json['points'] as int?,
+      totalPoints: json['totalPoints'] as int,
+      attemptComplete: json['attemptComplete'] as bool,
+    );
+  }
 }
