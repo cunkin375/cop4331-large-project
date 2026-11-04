@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/auth_api.dart';
 import '../theme.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthApi authApi;
@@ -76,9 +77,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(_loading ? 'Logging in...' : 'Log in'),
                   ),
                   const SizedBox(height: 8),
-                  // Both links get hooked up when those screens exist.
+                  // The forgot password link gets hooked up when that screen exists.
                   TextButton(onPressed: () {}, child: const Text('Forgot your password?')),
-                  TextButton(onPressed: () {}, child: const Text('New here? Create an account')),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => RegisterScreen(authApi: widget.authApi)),
+                    ),
+                    child: const Text('New here? Create an account'),
+                  ),
                 ],
               ),
             ),
