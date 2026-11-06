@@ -77,8 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(_loading ? 'Logging in...' : 'Log in'),
                   ),
                   const SizedBox(height: 8),
-                  // The forgot password link gets hooked up when that screen exists.
-                  TextButton(onPressed: () {}, child: const Text('Forgot your password?')),
+                  // The forgot password link goes here once that screen exists.
                   TextButton(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => RegisterScreen(authApi: widget.authApi)),
