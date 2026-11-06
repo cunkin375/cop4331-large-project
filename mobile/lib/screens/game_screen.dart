@@ -29,9 +29,9 @@ class GameScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const HandView(label: 'Dealer', cards: _dealerCards),
+              const HandView(title: "Dealer's Hand", cards: _dealerCards, totalLabel: 'Showing', total: 10),
               const SizedBox(height: 24),
-              const HandView(label: 'You', cards: _playerCards, value: 18),
+              const HandView(title: 'Your Hand', cards: _playerCards, totalLabel: 'Hand Value', total: 18),
               const Spacer(),
               Row(
                 children: [
