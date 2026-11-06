@@ -12,17 +12,48 @@ class GameScreen extends StatelessWidget {
     PlayingCard(rank: '7', suit: 'clubs'),
   ];
 
+  static final _buttonStyle = ElevatedButton.styleFrom(
+    backgroundColor: const Color(0xFFF5F5F5),
+    foregroundColor: const Color(0xFF171717),
+    minimumSize: const Size(0, 48),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+  );
+
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF255D36),
+    return Scaffold(
+      backgroundColor: const Color(0xFF255D36),
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            HandView(label: 'Dealer', cards: _dealerCards),
-            HandView(label: 'You', cards: _playerCards, value: 18),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const HandView(label: 'Dealer', cards: _dealerCards),
+              const SizedBox(height: 24),
+              const HandView(label: 'You', cards: _playerCards, value: 18),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: _buttonStyle,
+                      onPressed: () {},
+                      child: const Text('Hit'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: _buttonStyle,
+                      onPressed: () {},
+                      child: const Text('Stand'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
