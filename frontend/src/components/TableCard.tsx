@@ -35,11 +35,14 @@ function TableCard({ slot, index, sweeping }: { slot: CardSlot; index: number; s
         if (!fromDeck.current || !deck || prefersReducedMotion()) return;
         const { dx, dy, scale } = deltaTo(card, deck);
         const lift = Math.min(48, 16 + Math.abs(dx) * 0.1);
-        flight.current = card.animate([
+        const animation = card.animate([
             { transform: `translate(${dx}px, ${dy}px) scale(${scale}) rotate(-12deg)` },
             { transform: `translate(${dx * 0.45}px, ${dy * 0.45 - lift}px) scale(${(1 + scale) / 2}) rotate(-5deg)`, offset: 0.5 },
             { transform: 'none' },
         ], { duration: FLIGHT_MS, easing: 'cubic-bezier(0.22, 0.8, 0.3, 1)' });
+        flight.current = animation;
+        // React re-runs this in development (StrictMode); cancel so the rerun measures the card at rest.
+        return () => animation.cancel();
     }, [refs]);
 
     // When the hand re-centers around a new card, glide to the new spot instead of jumping.
@@ -61,10 +64,11 @@ function TableCard({ slot, index, sweeping }: { slot: CardSlot; index: number; s
         const discard = refs?.discard();
         if (!sweeping || !card || !discard || prefersReducedMotion()) return;
         const { dx, dy, scale } = deltaTo(card, discard);
-        card.animate([
+        const animation = card.animate([
             { transform: 'none', opacity: 1 },
             { transform: `translate(${dx}px, ${dy}px) scale(${scale}) rotate(8deg)`, opacity: 0 },
         ], { duration: SWEEP_MS, delay: index * SWEEP_STAGGER_MS, easing: 'ease-in', fill: 'forwards' });
+        return () => animation.cancel();
     }, [sweeping, refs, index]);
 
     // Both faces stay mounted so the hole card can flip in place (rotateY) when it's revealed.

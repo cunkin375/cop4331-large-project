@@ -28,8 +28,8 @@ function cardValue({ rank }: Card): number {
     return ['J', 'Q', 'K'].includes(rank) ? 10 : Number(rank);
 }
 
-// The deck and discard spot each exist twice: in the table's top row on phones and in the side
-// columns on desktop. Cards fly to and from whichever one is on screen.
+// The deck exists twice: in the table's top row on phones and beside the cards on wider screens.
+// Cards fly out of whichever one is on screen.
 function onScreen(...refs: RefObject<HTMLDivElement | null>[]): HTMLElement | null {
     return refs.map((ref) => ref.current).find((el) => el?.offsetParent != null) ?? null;
 }
@@ -59,10 +59,9 @@ const GamePage = () => {
     const deckRef = useRef<HTMLDivElement>(null);
     const sideDeckRef = useRef<HTMLDivElement>(null);
     const discardRef = useRef<HTMLDivElement>(null);
-    const sideDiscardRef = useRef<HTMLDivElement>(null);
     const tableRefs = useMemo(() => ({
         deck: () => onScreen(deckRef, sideDeckRef),
-        discard: () => onScreen(discardRef, sideDiscardRef),
+        discard: () => discardRef.current,
     }), []);
 
     // The round on screen once its animation has finished; null while cards are still moving into a new round.
@@ -115,54 +114,63 @@ const GamePage = () => {
         <div className="flex min-h-svh flex-col items-center gap-4 px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]
             text-center [--card-w:clamp(64px,19vw,104px)] [--deck-w:calc(var(--card-w)*0.6)] sm:gap-6 sm:pb-8">
             <AppHeader />
-            {/* Phones: one column with the legend under the buttons. Desktop: legend | table | deck. */}
-            <main className="flex w-full flex-1 flex-col gap-4 sm:flex-none sm:gap-6 lg:grid lg:max-w-6xl
-                lg:grid-cols-[15rem_minmax(0,1fr)_15rem] lg:items-start lg:gap-8">
+            <main className="flex w-full flex-1 flex-col sm:flex-none">
                 <TableRefsContext value={tableRefs}>
-                    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center gap-4 sm:gap-6 lg:col-start-2
-                        lg:row-start-1">
+                    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-4 sm:gap-6">
                         <h1 className="sr-only">Blackjack table</h1>
-                        {/* Discard spot (left), round and score (center), deck (right); the deck moves to its own column on desktop. */}
-                        <div className="flex w-full items-start justify-between gap-2 lg:justify-center">
-                            <div ref={discardRef} aria-hidden="true" className="w-(--deck-w) aspect-[95/130] lg:hidden" />
+                        {/* Discard spot (left), round and score (center), deck (right). From md up the deck sits beside the cards instead. */}
+                        <div className="flex w-full items-start justify-between gap-2">
+                            <div ref={discardRef} aria-hidden="true" className="w-(--deck-w) aspect-[95/130] md:aspect-auto md:h-0" />
                             {latest && (
                                 <p className="flex flex-wrap justify-center gap-x-6 tabular-nums">
                                     <span>Round {latest.round} / {ROUNDS_PER_ATTEMPT}</span>
                                     <span>Score: {sameAttempt ? shown.totalPoints : 0}</span>
                                 </p>
                             )}
-                            <div className="lg:hidden">
-                                <Deck ref={deckRef} />
+                            <div className="w-(--deck-w)">
+                                <div className="md:hidden">
+                                    <Deck ref={deckRef} />
+                                </div>
                             </div>
                         </div>
 
-                        {loading ? (
-                            <p className="my-auto sm:my-12">Loading your game…</p>
-                        ) : latest ? (
-                            <div className="flex w-full flex-col gap-6">
-                                <Hand
-                                    title="Dealer's Hand"
-                                    slots={view.dealer}
-                                    total={!current ? null : current.dealerValue ?? cardValue(current.dealerCards[0])}
-                                    totalLabel={roundOver ? 'Dealer Hand Value' : 'Showing'}
-                                    sweeping={view.sweeping}
-                                    dealId={view.dealId}
-                                />
-                                <Hand
-                                    title="Your Hand"
-                                    slots={view.player}
-                                    total={current?.playerValue ?? null}
-                                    totalLabel="Hand Value"
-                                    sweeping={view.sweeping}
-                                    dealId={view.dealId}
-                                />
+                        {/* From md up: legend box | cards | deck, grouped together in one row. */}
+                        <div className="flex w-full items-start justify-center gap-6 md:gap-8">
+                            <PointsLegend className="hidden shrink-0 self-center md:block md:w-44 lg:w-56" />
+                            <div className="flex min-w-0 flex-1 flex-col items-center md:max-w-[30rem]">
+                                {loading ? (
+                                    <p className="my-auto sm:my-12">Loading your game…</p>
+                                ) : latest ? (
+                                    <div className="flex w-full flex-col gap-6">
+                                        <Hand
+                                            title="Dealer's Hand"
+                                            slots={view.dealer}
+                                            total={!current ? null : current.dealerValue ?? cardValue(current.dealerCards[0])}
+                                            totalLabel={roundOver ? 'Dealer Hand Value' : 'Showing'}
+                                            sweeping={view.sweeping}
+                                            dealId={view.dealId}
+                                        />
+                                        <Hand
+                                            title="Your Hand"
+                                            slots={view.player}
+                                            total={current?.playerValue ?? null}
+                                            totalLabel="Hand Value"
+                                            sweeping={view.sweeping}
+                                            dealId={view.dealId}
+                                        />
+                                    </div>
+                                ) : (
+                                    <section className="my-auto grid max-w-[36ch] gap-3 sm:my-12">
+                                        <p>Beat the dealer without going over 21. Aces count as 1 or 11.</p>
+                                        <p>The dealer stands on 17. Each attempt is 10 rounds: 3 points per win, 1 per tie.</p>
+                                    </section>
+                                )}
                             </div>
-                        ) : (
-                            <section className="my-auto grid max-w-[36ch] gap-3 sm:my-12">
-                                <p>Beat the dealer without going over 21. Aces count as 1 or 11.</p>
-                                <p>The dealer stands on 17. Each attempt is 10 rounds: 3 points per win, 1 per tie.</p>
-                            </section>
-                        )}
+                            {/* Same width as the legend so the cards stay centered; the deck hugs the cards' right edge. */}
+                            <div className="hidden shrink-0 pt-10 md:block md:w-44 lg:w-56">
+                                <Deck ref={sideDeckRef} />
+                            </div>
+                        </div>
 
                         {/* Announced only after the cards finish moving, so the result isn't spoiled. */}
                         <div role="status" aria-live="polite" className="min-h-7 text-lg font-semibold">
@@ -195,15 +203,8 @@ const GamePage = () => {
                                 </button>
                             )}
                         </div>
-                    </div>
 
-                    <div className="flex flex-col items-center gap-6 lg:col-start-1 lg:row-start-1 lg:pt-16">
-                        <div ref={sideDiscardRef} aria-hidden="true" className="hidden w-(--deck-w) aspect-[95/130] lg:block" />
-                        <PointsLegend />
-                    </div>
-
-                    <div className="hidden lg:col-start-3 lg:row-start-1 lg:flex lg:justify-center lg:pt-16">
-                        <Deck ref={sideDeckRef} />
+                        <PointsLegend className="w-full max-w-90 md:hidden" />
                     </div>
                 </TableRefsContext>
             </main>
