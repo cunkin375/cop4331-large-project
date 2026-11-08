@@ -166,8 +166,9 @@ const GamePage = () => {
                                     </section>
                                 )}
                             </div>
-                            {/* Same width as the legend so the cards stay centered; the deck hugs the cards' right edge. */}
-                            <div className="hidden shrink-0 pt-10 md:block md:w-44 lg:w-56">
+                            {/* Same width as the legend so the cards stay centered; a larger deck sits in the middle of it. */}
+                            <div className="hidden shrink-0 self-center justify-center [--deck-w:calc(var(--card-w)*0.8)] md:flex
+                                md:w-44 lg:w-56">
                                 <Deck ref={sideDeckRef} />
                             </div>
                         </div>
