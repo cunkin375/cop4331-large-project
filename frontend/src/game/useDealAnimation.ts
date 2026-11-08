@@ -26,7 +26,7 @@ export const FLIGHT_MS = 400;
 export const FLIP_MS = 450;
 export const SWEEP_MS = 300;
 export const SWEEP_STAGGER_MS = 40;
-const DEAL_GAP_MS = 225;
+const DEAL_PAUSE_MS = 120; // after a card lands, before the next one leaves the deck
 
 const EMPTY: TableView = { dealId: 0, player: [], dealer: [], sweeping: false };
 
@@ -113,22 +113,17 @@ export function useDealAnimation() {
         }
 
         await preload([...next.playerCards, ...next.dealerCards]);
-        let flying = false;
         for (const step of planSteps(shownRef.current, next)) {
-            if (step.kind !== 'deal' && flying) {
-                await wait(FLIGHT_MS - DEAL_GAP_MS); // let the last card land
-                flying = false;
-            }
             if (step.kind === 'sweep') {
                 setView((v) => ({ ...v, sweeping: true }));
                 const cards = Math.max(shownRef.current?.playerCards.length ?? 0, 4);
                 await wait(SWEEP_MS + cards * SWEEP_STAGGER_MS);
                 setView((v) => ({ ...EMPTY, dealId: v.dealId + 1 }));
             } else if (step.kind === 'deal') {
+                // One card at a time: it lands before the next one leaves the deck.
                 const slot: CardSlot = { card: step.card, faceUp: step.card !== null, fromDeck: true };
                 setView((v) => ({ ...v, [step.hand]: [...v[step.hand], slot] }));
-                await wait(DEAL_GAP_MS);
-                flying = true;
+                await wait(FLIGHT_MS + DEAL_PAUSE_MS);
             } else {
                 setView((v) => ({
                     ...v,
@@ -137,7 +132,6 @@ export function useDealAnimation() {
                 await wait(FLIP_MS);
             }
         }
-        if (flying) await wait(FLIGHT_MS - DEAL_GAP_MS);
         finish(next);
     }, []);
 

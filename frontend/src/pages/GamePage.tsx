@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import AppHeader from '../components/AppHeader.tsx';
 import Deck from '../components/Deck.tsx';
 import Hand from '../components/Hand.tsx';
@@ -28,6 +28,12 @@ function cardValue({ rank }: Card): number {
     return ['J', 'Q', 'K'].includes(rank) ? 10 : Number(rank);
 }
 
+// The deck and discard spot each exist twice: in the table's top row on phones and in the side
+// columns on desktop. Cards fly to and from whichever one is on screen.
+function onScreen(...refs: RefObject<HTMLDivElement | null>[]): HTMLElement | null {
+    return refs.map((ref) => ref.current).find((el) => el?.offsetParent != null) ?? null;
+}
+
 function resultMessage(game: GameState): string {
     const playerNatural = game.playerCards.length === 2 && game.playerValue === 21;
     switch (game.outcome) {
@@ -51,8 +57,13 @@ const GamePage = () => {
     const busy = useRef(false);
     const nextButton = useRef<HTMLButtonElement>(null);
     const deckRef = useRef<HTMLDivElement>(null);
+    const sideDeckRef = useRef<HTMLDivElement>(null);
     const discardRef = useRef<HTMLDivElement>(null);
-    const tableRefs = useMemo(() => ({ deck: deckRef, discard: discardRef }), []);
+    const sideDiscardRef = useRef<HTMLDivElement>(null);
+    const tableRefs = useMemo(() => ({
+        deck: () => onScreen(deckRef, sideDeckRef),
+        discard: () => onScreen(discardRef, sideDiscardRef),
+    }), []);
 
     // The round on screen once its animation has finished; null while cards are still moving into a new round.
     const current = shown && latest && shown.gameId === latest.gameId && shown.round === latest.round ? shown : null;
@@ -104,20 +115,25 @@ const GamePage = () => {
         <div className="flex min-h-svh flex-col items-center gap-4 px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]
             text-center [--card-w:clamp(64px,19vw,104px)] [--deck-w:calc(var(--card-w)*0.6)] sm:gap-6 sm:pb-8">
             <AppHeader />
-            <main className="flex w-full flex-1 flex-col sm:flex-none">
+            {/* Phones: one column with the legend under the buttons. Desktop: legend | table | deck. */}
+            <main className="flex w-full flex-1 flex-col gap-4 sm:flex-none sm:gap-6 lg:grid lg:max-w-6xl
+                lg:grid-cols-[15rem_minmax(0,1fr)_15rem] lg:items-start lg:gap-8">
                 <TableRefsContext value={tableRefs}>
-                    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center gap-4 sm:gap-6">
+                    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center gap-4 sm:gap-6 lg:col-start-2
+                        lg:row-start-1">
                         <h1 className="sr-only">Blackjack table</h1>
-                        {/* Discard spot (left), round and score (center), deck (right). */}
-                        <div className="flex w-full items-start justify-between gap-2">
-                            <div ref={discardRef} aria-hidden="true" className="w-(--deck-w) aspect-[95/130]" />
+                        {/* Discard spot (left), round and score (center), deck (right); the deck moves to its own column on desktop. */}
+                        <div className="flex w-full items-start justify-between gap-2 lg:justify-center">
+                            <div ref={discardRef} aria-hidden="true" className="w-(--deck-w) aspect-[95/130] lg:hidden" />
                             {latest && (
                                 <p className="flex flex-wrap justify-center gap-x-6 tabular-nums">
                                     <span>Round {latest.round} / {ROUNDS_PER_ATTEMPT}</span>
                                     <span>Score: {sameAttempt ? shown.totalPoints : 0}</span>
                                 </p>
                             )}
-                            <Deck ref={deckRef} />
+                            <div className="lg:hidden">
+                                <Deck ref={deckRef} />
+                            </div>
                         </div>
 
                         {loading ? (
@@ -179,8 +195,15 @@ const GamePage = () => {
                                 </button>
                             )}
                         </div>
+                    </div>
 
+                    <div className="flex flex-col items-center gap-6 lg:col-start-1 lg:row-start-1 lg:pt-16">
+                        <div ref={sideDiscardRef} aria-hidden="true" className="hidden w-(--deck-w) aspect-[95/130] lg:block" />
                         <PointsLegend />
+                    </div>
+
+                    <div className="hidden lg:col-start-3 lg:row-start-1 lg:flex lg:justify-center lg:pt-16">
+                        <Deck ref={sideDeckRef} />
                     </div>
                 </TableRefsContext>
             </main>

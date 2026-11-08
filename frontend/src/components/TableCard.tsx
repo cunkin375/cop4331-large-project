@@ -29,7 +29,7 @@ function TableCard({ slot, index, sweeping }: { slot: CardSlot; index: number; s
     // Fly in from the deck with a slight arc and turn.
     useLayoutEffect(() => {
         const card = el.current;
-        const deck = refs?.deck.current;
+        const deck = refs?.deck();
         if (!card) return;
         lastLeft.current = card.offsetLeft;
         if (!fromDeck.current || !deck || prefersReducedMotion()) return;
@@ -58,7 +58,7 @@ function TableCard({ slot, index, sweeping }: { slot: CardSlot; index: number; s
     // Clear the table: slide toward the discard spot and fade out.
     useEffect(() => {
         const card = el.current;
-        const discard = refs?.discard.current;
+        const discard = refs?.discard();
         if (!sweeping || !card || !discard || prefersReducedMotion()) return;
         const { dx, dy, scale } = deltaTo(card, discard);
         card.animate([

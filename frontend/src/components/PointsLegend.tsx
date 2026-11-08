@@ -7,7 +7,9 @@ const LEGEND = [
 // Explains how each round adds to the attempt score.
 function PointsLegend() {
     return (
-        <section aria-labelledby="points-legend-heading" className="w-full max-w-90 text-left text-sm">
+        <section aria-labelledby="points-legend-heading"
+            className="w-full max-w-90 rounded-lg border border-white/15 bg-felt-dark/70 p-4 text-left text-sm">
+            {/* A boxed panel: under the buttons on phones, in the left column on desktop. */}
             <h2 id="points-legend-heading" className="mb-1 font-semibold">How points add up</h2>
             <dl className="grid gap-1">
                 {LEGEND.map(({ points, label, meaning }) => (
