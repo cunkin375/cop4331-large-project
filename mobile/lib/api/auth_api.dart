@@ -37,4 +37,13 @@ class AuthApi {
     );
     return data['message'] as String;
   }
+
+  // The reset link in the email opens the website, so the app only asks for it to be sent.
+  Future<void> forgotPassword(String email) async {
+    await client.request(
+      '/api/forgot-password',
+      method: 'POST',
+      body: {'email': email.trim()},
+    );
+  }
 }
