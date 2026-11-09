@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/auth_api.dart';
 import '../theme.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -77,7 +78,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(_loading ? 'Logging in...' : 'Log in'),
                   ),
                   const SizedBox(height: 8),
-                  // The forgot password link goes here once that screen exists.
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => ForgotPasswordScreen(authApi: widget.authApi)),
+                    ),
+                    child: const Text('Forgot your password?'),
+                  ),
                   TextButton(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => RegisterScreen(authApi: widget.authApi)),
