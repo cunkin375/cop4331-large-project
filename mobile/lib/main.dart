@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'api/api_client.dart';
 import 'api/auth_api.dart';
 import 'api/token_storage.dart';
+import 'models/user.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme.dart';
 
@@ -25,13 +27,26 @@ Future<void> onSessionExpired() async {
   );
 }
 
-void main() {
+// If a saved token still works, skip the login screen. Any problem means logging in again.
+Future<User?> restoreSession() async {
+  try {
+    if (await tokens.read() == null) return null;
+    return await authApi.me().timeout(const Duration(seconds: 8));
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   client.onUnauthorized = onSessionExpired;
-  runApp(const BlackjackApp());
+  final user = await restoreSession();
+  runApp(BlackjackApp(user: user));
 }
 
 class BlackjackApp extends StatelessWidget {
-  const BlackjackApp({super.key});
+  final User? user;
+  const BlackjackApp({super.key, this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +55,7 @@ class BlackjackApp extends StatelessWidget {
       theme: appTheme,
       navigatorKey: navigatorKey,
       scaffoldMessengerKey: messengerKey,
-      home: LoginScreen(authApi: authApi),
+      home: user == null ? LoginScreen(authApi: authApi) : HomeScreen(authApi: authApi, user: user!),
     );
   }
 }
