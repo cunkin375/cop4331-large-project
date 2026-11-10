@@ -21,6 +21,12 @@ void main() {
     expect(find.text('Log in'), findsWidgets);
   });
 
+  testWidgets('a restored session opens on the home screen', (tester) async {
+    const user = User(id: '1', username: 'tester', email: 'tester@example.com');
+    await tester.pumpWidget(const BlackjackApp(user: user));
+    expect(find.text('Logged in as tester'), findsOneWidget);
+  });
+
   testWidgets('home screen shows the user and a log out button', (tester) async {
     const user = User(id: '1', username: 'tester', email: 'tester@example.com');
     await tester.pumpWidget(MaterialApp(home: HomeScreen(authApi: authApi, user: user)));
