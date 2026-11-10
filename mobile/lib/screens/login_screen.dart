@@ -3,6 +3,7 @@ import '../api/api_client.dart';
 import '../api/auth_api.dart';
 import '../theme.dart';
 import 'forgot_password_screen.dart';
+import 'home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -34,9 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await widget.authApi.login(_identifier.text, _password.text);
       if (!mounted) return;
-      // Replaced with the game screen once that branch is merged.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Logged in as ${user.username}')),
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomeScreen(authApi: widget.authApi, user: user)),
       );
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
