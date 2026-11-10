@@ -21,6 +21,15 @@ class AuthApi {
     return User.fromJson(data['user'] as Map<String, dynamic>);
   }
 
+  // Returns the logged in user, so a saved token can be checked when the app opens.
+  Future<User> me() async {
+    final data = await client.request('/api/me');
+    return User.fromJson(data);
+  }
+
+  // The server doesn't keep sessions, so logging out just forgets the token.
+  Future<void> logout() => tokens.clear();
+
   Future<void> register(String username, String email, String password) async {
     await client.request(
       '/api/register',
