@@ -10,6 +10,8 @@ class AuthApi {
 
   // The server accepts either a username or an email to log in.
   Future<User> login(String identifier, String password) async {
+    // Drop any old token first, so a wrong password isn't mistaken for an expired session.
+    await tokens.clear();
     final id = identifier.trim();
     final field = id.contains('@') ? 'email' : 'username';
     final data = await client.request(
