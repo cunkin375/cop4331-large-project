@@ -9,7 +9,26 @@ final tokens = TokenStorage();
 final client = ApiClient(tokens);
 final authApi = AuthApi(client, tokens);
 
-void main() => runApp(const BlackjackApp());
+// Lets the API client move to the login screen from outside any widget.
+final navigatorKey = GlobalKey<NavigatorState>();
+final messengerKey = GlobalKey<ScaffoldMessengerState>();
+
+// Tokens expire after 2 hours. When the server rejects ours, start over at login.
+Future<void> onSessionExpired() async {
+  await tokens.clear();
+  navigatorKey.currentState?.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => LoginScreen(authApi: authApi)),
+    (_) => false,
+  );
+  messengerKey.currentState?.showSnackBar(
+    const SnackBar(content: Text('Your session expired. Please log in again.')),
+  );
+}
+
+void main() {
+  client.onUnauthorized = onSessionExpired;
+  runApp(const BlackjackApp());
+}
 
 class BlackjackApp extends StatelessWidget {
   const BlackjackApp({super.key});
@@ -19,6 +38,8 @@ class BlackjackApp extends StatelessWidget {
     return MaterialApp(
       title: 'Blackjack',
       theme: appTheme,
+      navigatorKey: navigatorKey,
+      scaffoldMessengerKey: messengerKey,
       home: LoginScreen(authApi: authApi),
     );
   }
