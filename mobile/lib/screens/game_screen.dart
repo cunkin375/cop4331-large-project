@@ -109,14 +109,28 @@ class _GameScreenState extends State<GameScreen> {
                         textAlign: TextAlign.center,
                       ),
                     const Spacer(),
+                    if (game.roundOver)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: _buttonStyle,
+                          // same as web: keep the gameId for the next round, drop it to start a new attempt
+                          onPressed: _busy
+                              ? null
+                              : () => _play((token, gameId) =>
+                                  startGame(token, gameId: game.attemptComplete ? null : gameId)),
+                          child: Text(game.attemptComplete ? 'Start New Attempt' : 'Next Round'),
+                        ),
+                      )
+                    else
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton(style: _buttonStyle, onPressed: _busy || game.roundOver ? null : () => _play(hit), child: const Text('Hit')),
+                          child: ElevatedButton(style: _buttonStyle, onPressed: _busy ? null : () => _play(hit), child: const Text('Hit')),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton(style: _buttonStyle, onPressed: _busy || game.roundOver ? null : () => _play(stand), child: const Text('Stand')),
+                          child: ElevatedButton(style: _buttonStyle, onPressed: _busy ? null : () => _play(stand), child: const Text('Stand')),
                         ),
                       ],
                     ),
