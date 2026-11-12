@@ -62,9 +62,26 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  // same messages as resultMessage() in the web app's GamePage.tsx
+  String _resultMessage(GameState game) {
+    final playerNatural = game.playerCards.length == 2 && game.playerValue == 21;
+    switch (game.outcome) {
+      case 'win':
+        if (playerNatural) return 'Blackjack! You win.';
+        return (game.dealerValue ?? 0) > 21 ? 'Dealer busts. You win!' : 'You win!';
+      case 'loss':
+        return game.playerValue > 21 ? 'Bust! You lose.' : 'Dealer wins.';
+      case 'tie':
+        return "Push. It's a tie.";
+      default:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = _game;
+    const chalk = TextStyle(color: Color(0xFFE6E6E6), fontSize: 16);
     return Scaffold(
       backgroundColor: const Color(0xFF255D36),
       body: SafeArea(
@@ -78,9 +95,19 @@ class _GameScreenState extends State<GameScreen> {
                 )
               : Column(
                   children: [
+                    Text('Round ${game.round} / 10     Score: ${game.totalPoints}', style: chalk),
+                    const SizedBox(height: 16),
                     HandView(title: "Dealer's Hand", cards: game.dealerCards, totalLabel: 'Showing', total: game.dealerValue),
                     const SizedBox(height: 24),
                     HandView(title: 'Your Hand', cards: game.playerCards, totalLabel: 'Hand Value', total: game.playerValue),
+                    const SizedBox(height: 24),
+                    if (game.roundOver)
+                      Text(
+                        _resultMessage(game) +
+                            (game.attemptComplete ? ' Attempt complete: ${game.totalPoints} points.' : ''),
+                        style: chalk.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
+                      ),
                     const Spacer(),
                     Row(
                       children: [
