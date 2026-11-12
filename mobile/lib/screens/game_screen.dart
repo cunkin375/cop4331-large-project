@@ -14,6 +14,8 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   GameState? _game;
   String? _error;
+  String? _token;
+  bool _busy = false;
 
   static final _buttonStyle = ElevatedButton.styleFrom(
     backgroundColor: const Color(0xFFF5F5F5),
@@ -33,12 +35,30 @@ class _GameScreenState extends State<GameScreen> {
     try {
       final token = await TokenStorage().read();
       if (token == null) throw ApiException(401, 'Log in first');
+      _token = token;
       final game = await startGame(token);
       if (!mounted) return;
       setState(() => _game = game);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _play(Future<GameState> Function(String token, String gameId) move) async {
+    final game = _game;
+    final token = _token;
+    if (game == null || token == null) return;
+    setState(() => _busy = true);
+    try {
+      final next = await move(token, game.gameId);
+      if (!mounted) return;
+      setState(() => _game = next);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -65,11 +85,11 @@ class _GameScreenState extends State<GameScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton(style: _buttonStyle, onPressed: () {}, child: const Text('Hit')),
+                          child: ElevatedButton(style: _buttonStyle, onPressed: _busy || game.roundOver ? null : () => _play(hit), child: const Text('Hit')),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton(style: _buttonStyle, onPressed: () {}, child: const Text('Stand')),
+                          child: ElevatedButton(style: _buttonStyle, onPressed: _busy || game.roundOver ? null : () => _play(stand), child: const Text('Stand')),
                         ),
                       ],
                     ),
