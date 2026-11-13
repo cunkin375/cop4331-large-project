@@ -4,9 +4,10 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "node --test server/app.test.js server/game.test.js server/auth.test.js",
-    "test:server": "node --test server/app.test.js server/game.test.js server/auth.test.js",
+    "test": "node --test server/app.test.js server/game.test.js server/auth.test.js server/integrationDb.test.js",
+    "test:server": "node --test server/app.test.js server/game.test.js server/auth.test.js server/integrationDb.test.js",
     "test:db": "node --env-file=.env server/models.integration.js",
+    "test:api:db": "node --env-file=.env server/api.integration.js",
     "test:seed": "node --test scripts/seed-users.test.js",
     "seed:users": "node --env-file=.env scripts/seed-users.js",
     "start": "node --env-file=.env server.js",

@@ -6,6 +6,6 @@ export interface LeaderboardEntry {
     score: number; // best completed 10-round attempt, out of 30
 }
 
-export function getLeaderboard() {
-    return apiFetch<{ players: LeaderboardEntry[] }>('/api/leaderboard');
+export function getLeaderboard(query = '') {
+    return apiFetch<{ players: LeaderboardEntry[] }>(`/api/leaderboard?q=${encodeURIComponent(query)}`);
 }
