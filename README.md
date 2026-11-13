@@ -125,3 +125,14 @@ unset SEED_PASSWORD
 ```
 
 Accounts that already exist are skipped.
+
+## AI Assistance Disclosure
+
+This project was developed with assistance from generative AI tools:
+
+- **Tool**: Claude (Anthropic), used through Claude Code and claude.ai
+- **Dates**: October 27 – November 13, 2026
+- **Scope**: Project planning and documentation (Gantt chart, ERD, use case, sequence and mobile class diagrams, README, test results, presentation slides), reviewing pull requests, debugging deployment and email setup, and parts of the web app code, including the My stats page, the change-password endpoint and the game rules test
+- **Use**: Drafted code and documents that team members then reviewed, edited and tested; reviewed pull requests for bugs before merging; explained errors and suggested fixes
+
+All AI-assisted code was reviewed, tested and merged through pull requests with two team approvals, and was checked against the live app at cruddylit.com. The final project reflects the team's design decisions and understanding of the stack.
