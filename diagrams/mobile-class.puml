@@ -1,0 +1,137 @@
+@startuml mobile-class
+' Class diagram for the Flutter mobile app (mobile/lib).
+' Covers main plus the game screen (PR #28) and the home screen with logout.
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+title Blackjack Mobile App: Class Diagram
+hide empty members
+skinparam classAttributeIconSize 0
+
+package screens {
+  class BlackjackApp {
+    +build(context): Widget
+  }
+  class LoginScreen {
+    +authApi: AuthApi
+  }
+  class RegisterScreen {
+    +authApi: AuthApi
+  }
+  class ForgotPasswordScreen {
+    +authApi: AuthApi
+  }
+  class HomeScreen {
+    +authApi: AuthApi
+  }
+  class GameScreen {
+    -game: GameState?
+    -start(): Future<void>
+    -play(move): Future<void>
+    -resultMessage(game): String
+  }
+}
+
+package widgets {
+  class HandView {
+    +title: String
+    +cards: List<PlayingCard>
+    +totalLabel: String
+    +total: int?
+  }
+  class PlayingCardWidget {
+    +card: PlayingCard
+    +width: double
+  }
+}
+
+package api {
+  class AuthApi {
+    +client: ApiClient
+    +tokens: TokenStorage
+    +login(identifier, password): Future<User>
+    +register(username, email, password): Future<void>
+    +resendVerification(email): Future<String>
+    +forgotPassword(email): Future<void>
+    +me(): Future<User>
+    +logout(): Future<void>
+  }
+  class GameApi <<functions>> {
+    +startGame(token, gameId?): Future<GameState>
+    +hit(token, gameId): Future<GameState>
+    +stand(token, gameId): Future<GameState>
+  }
+  class ApiClient {
+    +tokens: TokenStorage
+    +onUnauthorized: Function?
+    +request(path, method, body): Future<Map>
+  }
+  class TokenStorage {
+    -key: String
+    +read(): Future<String?>
+    +save(token): Future<void>
+    +clear(): Future<void>
+  }
+  class ApiException {
+    +status: int
+    +message: String
+  }
+}
+
+package models {
+  class User {
+    +id: String
+    +username: String
+    +email: String
+    +fromJson(json): User
+  }
+  class GameState {
+    +gameId: String
+    +round: int
+    +playerCards: List<PlayingCard>
+    +playerValue: int
+    +dealerCards: List<PlayingCard>
+    +dealerValue: int?
+    +roundOver: bool
+    +outcome: String?
+    +totalPoints: int
+    +attemptComplete: bool
+    +fromJson(json): GameState
+  }
+  class PlayingCard {
+    +rank: String
+    +suit: String
+    +imagePath: String
+    +fromJson(json): PlayingCard
+  }
+}
+
+class AppColors <<theme>> {
+  {static} +felt: Color
+  {static} +gold: Color
+  {static} +cardBack: Color
+}
+
+BlackjackApp --> LoginScreen : home
+LoginScreen --> RegisterScreen : opens
+LoginScreen --> ForgotPasswordScreen : opens
+LoginScreen --> HomeScreen : after login
+HomeScreen --> GameScreen : play
+
+LoginScreen ..> AuthApi : uses
+RegisterScreen ..> AuthApi : uses
+ForgotPasswordScreen ..> AuthApi : uses
+HomeScreen ..> AuthApi : uses
+
+AuthApi --> ApiClient
+AuthApi --> TokenStorage
+ApiClient --> TokenStorage : adds JWT
+ApiClient ..> ApiException : throws
+AuthApi ..> User : creates
+
+GameScreen ..> GameApi : uses
+GameScreen ..> TokenStorage : reads JWT
+GameApi ..> GameState : returns
+GameState *-- PlayingCard
+GameScreen *-- HandView
+HandView *-- PlayingCardWidget
+PlayingCardWidget --> PlayingCard
+@enduml
