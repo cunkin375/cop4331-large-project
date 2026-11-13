@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getMe, getMyAttempts, type Attempt } from '../api/profile.ts';
 import AppHeader from '../components/AppHeader.tsx';
+import ChangePasswordForm from '../components/ChangePasswordForm.tsx';
 import type { User } from '../types/user.ts';
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -101,6 +102,10 @@ const ProfilePage = () => {
                                 </tbody>
                             </table>
                         )}
+
+                        <div className="mt-8">
+                            <ChangePasswordForm />
+                        </div>
                     </>
                 )}
             </main>

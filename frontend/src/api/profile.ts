@@ -19,6 +19,12 @@ export function getMe() {
     return apiFetch<User>('/api/me');
 }
 
+export function changePassword(currentPassword: string, newPassword: string) {
+    return apiFetch<{ message: string }>('/api/change-password', {
+        method: 'POST', body: { currentPassword, newPassword },
+    });
+}
+
 // Newest first, with the best score across all of them.
 export function getMyAttempts() {
     return apiFetch<{ attempts: Attempt[]; bestScore: number }>('/api/attempts/me');
