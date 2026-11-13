@@ -76,7 +76,7 @@ async function withAuthApi(run) {
     return { status: response.status, body: await response.json() };
   };
   const api = {
-    post: (path, body) => call('POST', path, body),
+    post: (path, body, token) => call('POST', path, body, token),
     get: (path, token) => call('GET', path, undefined, token),
     verify: token => call('GET', `/verify-email?token=${encodeURIComponent(token)}`),
     lastVerifyToken: () => mail.verification.at(-1).token,
@@ -284,5 +284,26 @@ test('reset-password changes the password once and rejects bad or expired tokens
     assert.equal((await api.post('/login', { username: 'alice_1', password: PASSWORD })).status, 401);
     assert.equal((await api.post('/login', { username: 'alice_1', password: newPassword })).status, 200);
     assert.equal((await api.post('/reset-password', { token, password: 'another-password-99' })).status, 400);
+  });
+});
+
+test('change-password needs a login, the current password and a valid new one', async () => {
+  await withAuthApi(async api => {
+    await registerAndVerify(api);
+    const { token } = (await api.post('/login', { username: 'alice_1', password: PASSWORD })).body;
+    const newPassword = 'changed-password-77';
+
+    assert.equal((await api.post('/change-password', { currentPassword: PASSWORD, newPassword })).status, 401);
+    assert.equal((await api.post('/change-password', { newPassword }, token)).status, 400);
+    assert.equal((await api.post('/change-password', { currentPassword: PASSWORD, newPassword: 'short' }, token)).status, 400);
+
+    const wrong = await api.post('/change-password', { currentPassword: 'not-my-password-1', newPassword }, token);
+    assert.equal(wrong.status, 400);
+    assert.equal(wrong.body.error, 'Current password is incorrect');
+    assert.equal((await api.post('/login', { username: 'alice_1', password: PASSWORD })).status, 200);
+
+    assert.equal((await api.post('/change-password', { currentPassword: PASSWORD, newPassword }, token)).status, 200);
+    assert.equal((await api.post('/login', { username: 'alice_1', password: PASSWORD })).status, 401);
+    assert.equal((await api.post('/login', { username: 'alice_1', password: newPassword })).status, 200);
   });
 });
