@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../api/leaderboard_api.dart';
 import '../models/leaderboard_entry.dart';
@@ -15,6 +17,9 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<LeaderboardEntry>? _players;
   String? _error;
+  final _search = TextEditingController();
+  Timer? _debounce;
+  String _resultQuery = '';
 
   @override
   void initState() {
@@ -22,12 +27,26 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), _load);
+  }
+
   Future<void> _load() async {
+    final query = _search.text.trim();
     try {
-      final players = await widget.leaderboardApi.getLeaderboard();
-      if (!mounted) return;
+      final players = await widget.leaderboardApi.getLeaderboard(query: query);
+      if (!mounted || query != _search.text.trim()) return;
       setState(() {
         _players = players;
+        _resultQuery = query;
         _error = null;
       });
     } catch (e) {
@@ -60,7 +79,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600));
     }
     if (players == null) return const Center(child: CircularProgressIndicator());
-    if (players.isEmpty) return const Text('No completed attempts yet.', textAlign: TextAlign.center);
+    if (players.isEmpty) {
+      return Text(_resultQuery.isEmpty ? 'No completed attempts yet.' : 'No players match.',
+          textAlign: TextAlign.center);
+    }
     return Column(
       children: [
         _row('Rank', 'Player', 'Score', header: true),
@@ -82,6 +104,20 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.chalk.withValues(alpha: 0.75))),
             const SizedBox(height: 24),
+            TextField(
+              controller: _search,
+              maxLength: 30,
+              onChanged: _onSearchChanged,
+              decoration: const InputDecoration(
+                labelText: 'Search players',
+                hintText: 'Enter part of a username',
+                counterText: '',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('Ranks are within the matching results.',
+                style: TextStyle(fontSize: 13, color: AppColors.chalk.withValues(alpha: 0.75))),
+            const SizedBox(height: 16),
             _body(),
           ],
         ),
