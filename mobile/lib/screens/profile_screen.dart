@@ -64,6 +64,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  String _formatDate(DateTime utc) {
+    final d = utc.toLocal();
+    final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    return '${_months[d.month - 1]} ${d.day}, ${d.year}, $hour:$minute ${d.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  String _tally(Attempt attempt) {
+    int count(String outcome) => attempt.rounds.where((r) => r.outcome == outcome).length;
+    return '${count('win')} · ${count('tie')} · ${count('loss')}';
+  }
+
+  Widget _row(String finished, String tally, String score, {bool header = false, bool best = false}) {
+    final style = TextStyle(
+      fontSize: 15,
+      fontWeight: header || best ? FontWeight.w600 : FontWeight.normal,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: header ? 0.3 : 0.1))),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 5, child: Text(finished, style: style)),
+          Expanded(flex: 4, child: Text(tally, style: style)),
+          Text(score, style: best ? style.copyWith(color: AppColors.gold) : style),
+        ],
+      ),
+    );
+  }
+
   Widget _body() {
     final user = _user;
     final attempts = _attempts;
@@ -102,6 +136,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _stat('Average score', average),
           ],
         ),
+        const SizedBox(height: 32),
+        const Text('Past attempts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        if (attempts.isEmpty)
+          const Text('No finished attempts yet. Play all 10 rounds to get a score.', textAlign: TextAlign.center)
+        else ...[
+          _row('Finished', 'Win · Tie · Loss', 'Score', header: true),
+          for (final a in attempts)
+            _row(_formatDate(a.completedAt), _tally(a), '${a.score}', best: a.score == _bestScore),
+        ],
       ],
     );
   }
