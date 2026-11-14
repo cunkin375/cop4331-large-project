@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../api/auth_api.dart';
 import '../models/user.dart';
+import 'game_screen.dart';
 import 'login_screen.dart';
 
-// Shown after login. The game, leaderboard and profile screens get linked from here.
+// Shown after login. The leaderboard and profile screens get linked from here too.
 class HomeScreen extends StatelessWidget {
   final AuthApi authApi;
   final User user;
@@ -38,6 +39,14 @@ class HomeScreen extends StatelessWidget {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 24),
+                  FilledButton(
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const GameScreen()),
+                    ),
+                    child: const Text('Play'),
+                  ),
+                  const SizedBox(height: 12),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                     onPressed: () => _logout(context),
