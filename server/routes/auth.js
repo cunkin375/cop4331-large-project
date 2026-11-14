@@ -44,8 +44,11 @@ function checkPassword(password) {
 }
 
 // Email delivery failures are logged, never exposed, so responses stay uniform.
+// Nodemailer's messages describe the SMTP failure (e.g. "Invalid login: 535 ...")
+// without the password or email body, so the log shows why a send failed.
 function deliver(sending) {
-  Promise.resolve().then(sending).catch(error => console.error('Email delivery failed:', error.name));
+  Promise.resolve().then(sending)
+    .catch(error => console.error('Email delivery failed:', `${error.name}: ${error.message}`));
 }
 
 const publicUser = user => ({ id: String(user._id), username: user.username, email: user.email });

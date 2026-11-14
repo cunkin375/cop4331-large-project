@@ -246,6 +246,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: The user no longer exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
   /me:
     get:
@@ -269,6 +274,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /game/start:
     post:
       tags: [Game]
@@ -471,6 +477,7 @@ components:
       properties:
         _id: { type: string, format: uuid, description: Same as the game ID. }
         userId: { type: string }
+        user: { type: string, description: Same as userId. }
         sessionId: { type: string, format: uuid }
         rounds:
           type: array
