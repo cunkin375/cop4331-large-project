@@ -1,0 +1,66 @@
+@startuml mobile-class
+' Class diagram for the Flutter mobile app (mobile/lib).
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+title Blackjack Mobile App: Class Diagram
+hide empty members
+skinparam classAttributeIconSize 0
+
+class LoginScreen
+class RegisterScreen
+class HomeScreen
+class GameScreen
+
+class AuthApi {
+  +login(identifier, password)
+  +register(username, email, password)
+  +logout()
+}
+
+class GameApi {
+  +startGame(token)
+  +hit(token, gameId)
+  +stand(token, gameId)
+}
+
+class ApiClient {
+  +request(path, method, body)
+}
+
+class TokenStorage {
+  +read()
+  +save(token)
+  +clear()
+}
+
+class User {
+  +id: String
+  +username: String
+  +email: String
+}
+
+class GameState {
+  +round: int
+  +playerCards: List<PlayingCard>
+  +dealerCards: List<PlayingCard>
+  +totalPoints: int
+}
+
+class PlayingCard {
+  +rank: String
+  +suit: String
+}
+
+LoginScreen --> RegisterScreen
+LoginScreen --> HomeScreen
+HomeScreen --> GameScreen
+
+LoginScreen ..> AuthApi
+RegisterScreen ..> AuthApi
+GameScreen ..> GameApi
+
+AuthApi --> ApiClient
+ApiClient --> TokenStorage
+AuthApi ..> User
+GameApi ..> GameState
+GameState *-- PlayingCard
+@enduml

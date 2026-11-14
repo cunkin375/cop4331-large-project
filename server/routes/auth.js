@@ -146,6 +146,24 @@ export function createAuthRouter(db, mailer) {
     res.json({ message: 'Password updated. You can now log in.' });
   }));
 
+  // Wrong current password is a 400, not a 401, so clients don't treat it as an expired login.
+  router.post('/change-password', requireAuth, asyncHandler(async (req, res) => {
+    requireFields(req.body, ['currentPassword', 'newPassword']);
+    const { currentPassword, newPassword } = req.body;
+    checkPassword(newPassword);
+    const found = await users().findOne({ _id: new ObjectId(req.user.id) }, { projection: { email: 1 } });
+    if (!found) throw new HttpError(404, 'User not found');
+    if (!await new User(db).authenticate(found.email, currentPassword)) {
+      throw new HttpError(400, 'Current password is incorrect');
+    }
+    await users().updateOne(
+      { _id: found._id },
+      { $set: { passwordHash: await hashPassword(newPassword), updatedAt: new Date() },
+        $unset: { resetTokenHash: '', resetTokenExpires: '' } },
+    );
+    res.json({ message: 'Password changed.' });
+  }));
+
   router.get('/me', requireAuth, asyncHandler(async (req, res) => {
     const user = await users().findOne(
       { _id: new ObjectId(req.user.id) },

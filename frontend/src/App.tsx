@@ -6,6 +6,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.tsx';
 import GamePage from './pages/GamePage.tsx';
 import LeaderboardPage from './pages/LeaderboardPage.tsx';
 import LoginPage from './pages/LoginPage.tsx';
+import ProfilePage from './pages/ProfilePage.tsx';
 import RegisterPage from './pages/RegisterPage.tsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.tsx';
 import VerifyEmailPage from './pages/VerifyEmailPage.tsx';
@@ -24,6 +25,7 @@ function App() {
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/play" element={<RequireAuth><GamePage /></RequireAuth>} />
                     <Route path="/leaderboard" element={<LeaderboardPage />} />
+                    <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </BrowserRouter>

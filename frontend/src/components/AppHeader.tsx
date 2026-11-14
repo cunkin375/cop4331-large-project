@@ -13,9 +13,12 @@ function AppHeader() {
                 <NavLink to="/play" className={navClass}>Play</NavLink>
                 <NavLink to="/leaderboard" className={navClass}>Leaderboard</NavLink>
                 {user ? (
-                    <button type="button" onClick={logout} className="cursor-pointer px-2 py-3 hover:underline">
-                        Log out
-                    </button>
+                    <>
+                        <NavLink to="/profile" className={navClass}>My stats</NavLink>
+                        <button type="button" onClick={logout} className="cursor-pointer px-2 py-3 hover:underline">
+                            Log out
+                        </button>
+                    </>
                 ) : (
                     <NavLink to="/login" className={navClass}>Log in</NavLink>
                 )}
