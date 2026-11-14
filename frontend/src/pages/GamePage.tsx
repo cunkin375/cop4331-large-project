@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import AppHeader from '../components/AppHeader.tsx';
 import Deck from '../components/Deck.tsx';
 import Hand from '../components/Hand.tsx';
+import MusicToggle from '../components/MusicToggle.tsx';
 import PointsLegend from '../components/PointsLegend.tsx';
 import { TableRefsContext } from '../components/tableRefs.ts';
 import * as gameApi from '../api/game.ts';
 import { ApiError } from '../api/client.ts';
+import { musicOff, saveMusicOff, startMusic, stopMusic, unlockMusic } from '../game/backgroundMusic.ts';
 import { useDealAnimation } from '../game/useDealAnimation.ts';
 import { ROUNDS_PER_ATTEMPT, type Card, type GameState } from '../types/game.ts';
 
@@ -54,6 +56,7 @@ const GamePage = () => {
     const [loading, setLoading] = useState(() => storedGameId() !== null);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState('');
+    const [musicOn, setMusicOn] = useState(() => !musicOff());
     const busy = useRef(false);
     const nextButton = useRef<HTMLButtonElement>(null);
     const deckRef = useRef<HTMLDivElement>(null);
@@ -68,6 +71,21 @@ const GamePage = () => {
     const current = shown && latest && shown.gameId === latest.gameId && shown.round === latest.round ? shown : null;
     const roundOver = current?.roundOver ?? false;
     const sameAttempt = shown && latest && shown.gameId === latest.gameId;
+    // From the first deal until the tenth round's result is on screen.
+    const attemptInProgress = latest !== null && !current?.attemptComplete;
+
+    // Music plays during an attempt and fades out when it ends or the player leaves the table.
+    useEffect(() => {
+        if (!attemptInProgress || !musicOn) return;
+        void startMusic();
+        return () => stopMusic();
+    }, [attemptInProgress, musicOn]);
+
+    function toggleMusic(on: boolean) {
+        setMusicOn(on);
+        saveMusicOff(!on);
+        if (on) unlockMusic();
+    }
 
     // Resume the saved game after a reload, showing its cards without replaying the deal.
     useEffect(() => {
@@ -88,6 +106,7 @@ const GamePage = () => {
     // It stays set until the animation finishes, so taps during a deal are ignored.
     async function act(action: () => Promise<GameState>) {
         if (busy.current) return;
+        if (musicOn) unlockMusic();
         busy.current = true;
         setPending(true);
         setError('');
@@ -121,12 +140,15 @@ const GamePage = () => {
                         {/* Discard spot (left), round and score (center), deck (right). From md up the deck sits beside the cards instead. */}
                         <div className="flex w-full items-start justify-between gap-2">
                             <div ref={discardRef} aria-hidden="true" className="w-(--deck-w) aspect-[95/130] md:aspect-auto md:h-0" />
-                            {latest && (
-                                <p className="flex flex-wrap justify-center gap-x-6 tabular-nums">
-                                    <span>Round {latest.round} / {ROUNDS_PER_ATTEMPT}</span>
-                                    <span>Score: {sameAttempt ? shown.totalPoints : 0}</span>
-                                </p>
-                            )}
+                            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 tabular-nums">
+                                {latest && (
+                                    <>
+                                        <span>Round {latest.round} / {ROUNDS_PER_ATTEMPT}</span>
+                                        <span>Score: {sameAttempt ? shown.totalPoints : 0}</span>
+                                    </>
+                                )}
+                                <MusicToggle on={musicOn} onChange={toggleMusic} />
+                            </div>
                             <div className="w-(--deck-w)">
                                 <div className="md:hidden">
                                     <Deck ref={deckRef} />
