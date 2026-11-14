@@ -129,6 +129,17 @@ const GamePage = () => {
 
     const nextRound = () => gameApi.startRound(shown && !shown.attemptComplete ? shown.gameId : undefined);
 
+    // Quits the attempt early and goes back to the Deal screen. Only finished 10-round attempts are
+    // saved, so nothing from this one counts.
+    function endGame() {
+        if (busy.current) return;
+        if (!window.confirm('End this game? Your rounds so far won\'t be saved.')) return;
+        storeGameId(null);
+        setError('');
+        clear();
+        requestAnimationFrame(() => nextButton.current?.focus());
+    }
+
     return (
         <div className="flex min-h-svh flex-col items-center gap-4 px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]
             text-center [--card-w:clamp(64px,19vw,104px)] [--deck-w:calc(var(--card-w)*0.6)] sm:gap-6 sm:pb-8">
@@ -226,6 +237,13 @@ const GamePage = () => {
                                 </button>
                             )}
                         </div>
+
+                        {attemptInProgress && (
+                            <button type="button" className="btn btn-danger min-h-10 flex-none px-4 text-sm"
+                                disabled={pending} onClick={endGame}>
+                                End game
+                            </button>
+                        )}
 
                         <PointsLegend className="w-full max-w-90 md:hidden" />
                     </div>
