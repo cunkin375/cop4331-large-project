@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:blackjack/main.dart';
+import 'package:blackjack/models/user.dart';
+import 'package:blackjack/screens/home_screen.dart';
 
 void main() {
   testWidgets('app starts', (tester) async {
@@ -16,5 +19,18 @@ void main() {
     await tester.tap(find.text('Back to log in'));
     await tester.pumpAndSettle();
     expect(find.text('Log in'), findsWidgets);
+  });
+
+  testWidgets('a restored session opens on the home screen', (tester) async {
+    const user = User(id: '1', username: 'tester', email: 'tester@example.com');
+    await tester.pumpWidget(const BlackjackApp(user: user));
+    expect(find.text('Logged in as tester'), findsOneWidget);
+  });
+
+  testWidgets('home screen shows the user and a log out button', (tester) async {
+    const user = User(id: '1', username: 'tester', email: 'tester@example.com');
+    await tester.pumpWidget(MaterialApp(home: HomeScreen(authApi: authApi, user: user)));
+    expect(find.text('Logged in as tester'), findsOneWidget);
+    expect(find.text('Log out'), findsOneWidget);
   });
 }

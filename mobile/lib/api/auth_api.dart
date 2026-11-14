@@ -10,6 +10,8 @@ class AuthApi {
 
   // The server accepts either a username or an email to log in.
   Future<User> login(String identifier, String password) async {
+    // Drop any old token first, so a wrong password isn't mistaken for an expired session.
+    await tokens.clear();
     final id = identifier.trim();
     final field = id.contains('@') ? 'email' : 'username';
     final data = await client.request(
@@ -20,6 +22,15 @@ class AuthApi {
     await tokens.save(data['token'] as String);
     return User.fromJson(data['user'] as Map<String, dynamic>);
   }
+
+  // Returns the logged in user, so a saved token can be checked when the app opens.
+  Future<User> me() async {
+    final data = await client.request('/api/me');
+    return User.fromJson(data);
+  }
+
+  // The server doesn't keep sessions, so logging out just forgets the token.
+  Future<void> logout() => tokens.clear();
 
   Future<void> register(String username, String email, String password) async {
     await client.request(
