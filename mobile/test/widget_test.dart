@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:blackjack/main.dart';
 import 'package:blackjack/models/user.dart';
+import 'package:blackjack/screens/game_screen.dart';
 import 'package:blackjack/screens/home_screen.dart';
 
 void main() {
@@ -32,5 +33,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: HomeScreen(authApi: authApi, user: user)));
     expect(find.text('Logged in as tester'), findsOneWidget);
     expect(find.text('Log out'), findsOneWidget);
+  });
+
+  testWidgets('play opens the game screen', (tester) async {
+    const user = User(id: '1', username: 'tester', email: 'tester@example.com');
+    await tester.pumpWidget(MaterialApp(home: HomeScreen(authApi: authApi, user: user)));
+    await tester.tap(find.text('Play'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(GameScreen), findsOneWidget);
   });
 }
