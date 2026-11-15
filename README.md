@@ -128,11 +128,11 @@ Accounts that already exist are skipped.
 
 ## AI Assistance Disclosure
 
-This project was developed with assistance from generative AI tools:
+We used some AI help on this project:
 
-- **Tool**: Claude (Anthropic), used through Claude Code and claude.ai
-- **Dates**: October 27 – November 13, 2026
-- **Scope**: Project planning and documentation (Gantt chart, ERD, use case, sequence and mobile class diagrams, README, test results, presentation slides), reviewing pull requests, debugging deployment and email setup, and parts of the web app code, including the My stats page, the change-password endpoint and the game rules test
-- **Use**: Drafted code and documents that team members then reviewed, edited and tested; reviewed pull requests for bugs before merging; explained errors and suggested fixes
+- **Tool**: Claude Opus 5.5 (Anthropic), through Claude Code and claude.ai
+- **Dates**: October 27 to November 15, 2026
+- **Scope**: We mostly used it for debugging, like when our server deploys kept failing and when we were getting the verification emails to send. We also used it on some of the harder code, like getting the background music to loop smoothly and the test that checks our scoring over 20,000 rounds, plus parts of the My stats page, change password and the End game button. It also looked over some of our pull requests and helped with first drafts of the diagrams, test results and slides.
+- **Use**: It helped us figure out errors and suggested fixes, and wrote first drafts of some code and docs that we then went through, changed and tested ourselves.
 
-All AI-assisted code was reviewed, tested and merged through pull requests with two team approvals, and was checked against the live app at cruddylit.com. The final project reflects the team's design decisions and understanding of the stack.
+Anything AI helped with still went through a pull request with two approvals from the team and got tested on the live site at cruddylit.com.
