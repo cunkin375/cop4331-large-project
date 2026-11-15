@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import '../api/auth_api.dart';
-import '../models/user.dart';
-import 'game_screen.dart';
-import 'login_screen.dart';
 
-// Shown after login. The leaderboard and profile screens get linked from here too.
+import '../api/auth_api.dart';
+import '../api/leaderboard_api.dart';
+import '../api/profile_api.dart';
+import '../models/user.dart';
+import '../theme.dart';
+import 'game_screen.dart';
+import 'leaderboard_screen.dart';
+import 'login_screen.dart';
+import 'profile_screen.dart';
+
+// Shown after login, with the same destinations as the web navigation.
 class HomeScreen extends StatelessWidget {
   final AuthApi authApi;
   final User user;
@@ -31,24 +37,59 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Blackjack', textAlign: TextAlign.center, style: TextStyle(fontSize: 30)),
+                  const Text(
+                    'Blackjack',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 30),
+                  ),
                   const SizedBox(height: 24),
                   Text(
                     'Logged in as ${user.username}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const GameScreen()),
                     ),
                     child: const Text('Play'),
                   ),
                   const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    style: _navigationStyle,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => LeaderboardScreen(
+                          leaderboardApi: LeaderboardApi(authApi.client),
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.leaderboard_outlined),
+                    label: const Text('Leaderboard'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    style: _navigationStyle,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ProfileScreen(
+                          profileApi: ProfileApi(authApi.client),
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.person_outline),
+                    label: const Text('My stats'),
+                  ),
+                  const SizedBox(height: 12),
                   OutlinedButton(
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    style: _navigationStyle,
                     onPressed: () => _logout(context),
                     child: const Text('Log out'),
                   ),
@@ -60,4 +101,12 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+
+  static final _navigationStyle = OutlinedButton.styleFrom(
+    foregroundColor: AppColors.chalk,
+    backgroundColor: AppColors.feltDark,
+    side: BorderSide(color: AppColors.chalk.withValues(alpha: 0.3)),
+    minimumSize: const Size.fromHeight(48),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  );
 }
